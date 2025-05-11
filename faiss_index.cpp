@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 
+FaissIndex::FaissIndex(faiss::Index *index) : index(index){}
+
 /**
  * @brief 向FAISS索引中插入单个向量及其关联标签
  *
