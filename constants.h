@@ -4,6 +4,8 @@
  * @details 定义了系统中使用的所有常量，包括日志、请求参数、响应字段等
  */
 
+#pragma once
+
 // 日志配置
 #define LOGGER_NAME "GlobalLogger"  // 全局日志记录器名称
 

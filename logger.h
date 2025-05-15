@@ -4,6 +4,8 @@
  * @details 提供全局日志记录器的声明和初始化函数
  */
 
+#pragma once
+
 #include "spdlog/spdlog.h"
 
 /**

@@ -1,4 +1,4 @@
-
+#pragma once
 #include "faiss_index.h"
 #include "include/httplib.h"
 #include "index_factory.h"

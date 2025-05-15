@@ -3,6 +3,8 @@
  * 因此统一新建一个 IndexFactory 类来管理系统中的索引向量类型。
  */
 
+#pragma once
+
 #include <map>
 #include "faiss_index.h"
 
