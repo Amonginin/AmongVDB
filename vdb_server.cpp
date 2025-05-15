@@ -21,11 +21,11 @@
  */
 int main(int argc, char* argv[]) {
     // 初始化全局日志系统
-    init_global_logger();
+    initGlobalLogger();
     // 设置日志级别为debug，用于开发调试
-    set_log_level(spdlog::level::debug);
+    setLogLevel(spdlog::level::debug);
 
-    global_logger->info("Global logger initialized");
+    globalLogger->info("Global logger initialized");
 
     // 设置向量维度
     int dim = 1;
@@ -40,14 +40,14 @@ int main(int argc, char* argv[]) {
     
     // 初始化FLAT类型的索引，用于向量存储和检索
     globalIndexFactory->init(IndexFactory::IndexType::FLAT, dim);
-    global_logger->info("Global index factory initialized");
+    globalLogger->info("Global index factory initialized");
 
     // 创建HTTP服务器实例，监听本地9729端口
     HttpServer http_server("localhost", 9729);
-    global_logger->info("HTTP server created");
+    globalLogger->info("HTTP server created");
     // 启动HTTP服务器
     http_server.start();
-    global_logger->info("HTTP server started");
+    globalLogger->info("HTTP server started");
     
     return 0;   
 }

@@ -11,28 +11,28 @@
 #include <spdlog/sinks/basic_file_sink.h>
     
 // 定义全局日志记录器
-std::shared_ptr<spdlog::logger> global_logger;
+std::shared_ptr<spdlog::logger> globalLogger;
 
-void init_global_logger() {
+void initGlobalLogger() {
     try {
         // 创建支持彩色输出的控制台日志记录器
         // 参数"amongvdb"是日志记录器的名称
         // stdout_color_mt表示创建一个线程安全的、支持彩色输出的日志记录器
-        global_logger = spdlog::stdout_color_mt("amongvdb");
+        globalLogger = spdlog::stdout_color_mt("amongvdb");
         
         // 设置日志输出格式
         // %Y-%m-%d %H:%M:%S.%e: 时间戳，精确到毫秒
         // %^%l%$: 日志级别，使用不同颜色显示
         // %t: 线程ID
         // %v: 实际的日志消息
-        global_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
+        globalLogger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
         
         // 设置默认日志级别为debug
         // 需要更改时再手动设置
-        global_logger->set_level(spdlog::level::debug);
+        globalLogger->set_level(spdlog::level::debug);
         
         // 输出初始化成功信息
-        global_logger->info("日志系统初始化成功");
+        globalLogger->info("日志系统初始化成功");
     } catch (const spdlog::spdlog_ex& ex) {
         // 如果初始化失败，输出错误信息到标准错误流
         std::cerr << "日志系统初始化失败: " << ex.what() << std::endl;
@@ -52,13 +52,13 @@ void init_global_logger() {
     }
 }
 
-void set_log_level(spdlog::level::level_enum level) {
+void setLogLevel(spdlog::level::level_enum level) {
     // 检查全局日志记录器是否已初始化
-    if (global_logger) {
+    if (globalLogger) {
         // 设置新的日志级别
-        global_logger->set_level(level);
+        globalLogger->set_level(level);
         
         // 输出日志级别变更信息
-        global_logger->info("日志级别已设置为: {}", spdlog::level::to_string_view(level));
+        globalLogger->info("日志级别已设置为: {}", spdlog::level::to_string_view(level));
     }
 }

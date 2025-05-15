@@ -91,12 +91,12 @@ std::pair<std::vector<long>, std::vector<float>> FaissIndex::search_vectors(cons
     index->search(num_queries, query.data(), k, distances.data(), indices.data());
 
     // 打印查询结果
-    global_logger->debug("Retrieved values:");
+    globalLogger->debug("Retrieved values:");
     for (size_t i = 0; i < indices.size(); ++i) {
         if (indices[i] != -1) {
-            global_logger->debug("ID: {}, Distance: {}", indices[i], distances[i]);
+            globalLogger->debug("ID: {}, Distance: {}", indices[i], distances[i]);
         } else {
-            global_logger->debug("No specific value found");
+            globalLogger->debug("No specific value found");
         }
     }
 

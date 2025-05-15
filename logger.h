@@ -13,14 +13,14 @@
  * @details 用于在整个应用程序中共享同一个日志记录器实例
  * @note 使用extern声明，实际定义在logger.cpp中
  */
-extern std::shared_ptr<spdlog::logger> global_logger;
+extern std::shared_ptr<spdlog::logger> globalLogger;
 
 /**
  * @brief 初始化全局日志记录器
  * @details 创建并配置全局日志记录器，设置输出格式和默认日志级别
  * @note 应该在程序启动时调用此函数
  */
-void init_global_logger();
+void initGlobalLogger();
 
 /**
  * @brief 设置日志级别
@@ -34,4 +34,4 @@ void init_global_logger();
  *          - critical: 严重错误
  *          - off: 关闭所有日志
  */
-void set_log_level(spdlog::level::level_enum level);
+void setLogLevel(spdlog::level::level_enum level);
