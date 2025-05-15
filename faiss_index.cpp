@@ -80,14 +80,25 @@ std::pair<std::vector<long>, std::vector<float>> FaissIndex::search_vectors(cons
     // 用待查询向量数组的长度 除以 每个待查询向量的维度 来计算待查询向量的数量
     int num_queries = query.size() / dim;
 
-    // 创建一个动态数组来存储所有查询结果，大小为待查询向量的数量乘以k
-    std::vector<long> indices{num_queries * k}; // 使用花括号初始化
+    // 创建一个动态数组来存储所有查询结果向量的ID，大小为待查询向量的数量乘以k
+    // NOTE:使用花括号初始化
+    std::vector<long> indices{num_queries * k}; 
 
     // 创建一个存储所有查询结果距离的动态数组，大小也为查询向量的数量乘以k
     std::vector<float> distances{num_queries * k};
 
     // 执行查询操作，传入查询向量的数量、数据、k值、距离和向量ID结果的指针
     index->search(num_queries, query.data(), k, distances.data(), indices.data());
+
+    // 打印查询结果
+    global_logger->debug("Retrieved values:");
+    for (size_t i = 0; i < indices.size(); ++i) {
+        if (indices[i] != -1) {
+            global_logger->debug("ID: {}, Distance: {}", indices[i], distances[i]);
+        } else {
+            global_logger->debug("No specific value found");
+        }
+    }
 
     return {indices, distances};
 }

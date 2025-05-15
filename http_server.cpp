@@ -34,23 +34,34 @@ void HttpServer::start()
  */
 void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &res)
 {
+    // 打印接收到了搜索请求
+    global_logger->debug("Received search request");
+
     // 解析请求体中的JSON请求内容
     rapidjson::Document json_request;
     json_request.Parse(req.body.c_str());
 
+    // 打印用户的输入参数
+    global_logger->info("Search request parameters: {}", req.body);
+
     // 检查JSON文档是否为有效的对象
     if (!json_request.IsObject())
     {
+        global_logger->error("Invalid JSON request");
         res.status = 400; // Bad Request - 请求格式错误
-        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR, "Invalid JSON request");
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Invalid JSON request");
         return;
     }
 
     // 检查请求参数的合法性（vectors和k参数是否存在且格式正确）
     if (!isRequestValid(json_request, CheckType::SEARCH))
     {
+        global_logger->error(
+            "Missing vectors or k parameter in the request");
         res.status = 400;
-        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR, "Missing vectors or k parameters in the request");
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Missing vectors or k parameters in the request");
         return;
     }
 
@@ -64,13 +75,19 @@ void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &r
     }
     // 获取请求中的查询参数：k返回的结果向量的数量
     int k = json_request[REQUEST_K].GetInt();
+
+    global_logger->debug("Query parameters: k = {}", k);
+
     // 获取请求中的查询参数：indexType索引类型
     IndexFactory::IndexType index_type = getIndexTypeFromRequest(json_request);
     if (index_type == IndexFactory::IndexType::UNKNOWN)
     {
+        global_logger->error(
+            "Invalid indexType parameter in the request");
         // 如果索引类型无效，返回错误响应
         res.status = 400;
-        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR, "Invalid indexType parameter in the request");
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Invalid indexType parameter in the request");
         return;
     }
 
@@ -87,7 +104,7 @@ void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &r
         // 执行向量搜索，返回<向量ID, 距离>对
         results = faiss_index->search_vectors(query, k);
         break;
-    // TODO: 支持其他索引类型   
+    // TODO: 支持其他索引类型
     default:
         break;
     }
@@ -128,13 +145,20 @@ void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &r
 void HttpServer::insertHandler(const httplib::Request &req,
                                httplib::Response &res)
 {
+    // 打印接收到了插入请求
+    global_logger->debug("Received insert request");
+
     // 解析请求体中的JSON请求内容
     rapidjson::Document json_request;
     json_request.Parse(req.body.c_str());
 
+    // 打印用户的输入参数
+    global_logger->info("Insert request parameters: {}", req.body);
+
     // 检查JSON文档是否为有效的对象
     if (!json_request.IsObject())
     {
+        global_logger->error("Invalid JSON request");
         res.status = 400;
         setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
                              "Invalid JSON request");
@@ -144,9 +168,11 @@ void HttpServer::insertHandler(const httplib::Request &req,
     // 检查请求参数的合法性（vectors和label参数是否存在且格式正确）
     if (!isRequestValid(json_request, CheckType::INSERT))
     {
+        global_logger->error(
+            "Missing vectors or id parameter in the request");
         res.status = 400;
         setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
-                             "Missing vectors or label id in the request");
+                             "Missing vectors or k parameter in the request");
         return;
     }
 
@@ -158,10 +184,14 @@ void HttpServer::insertHandler(const httplib::Request &req,
     }
     // 获取请求中的插入参数：id待插入向量的唯一标识
     uint64_t id = json_request[REQUEST_ID].GetUint64();
+    global_logger->debug("Insert parameters: id = {}", id);  
+
     // 获取请求中的插入参数：indexType索引类型
     IndexFactory::IndexType index_type = getIndexTypeFromRequest(json_request);
     if (index_type == IndexFactory::IndexType::UNKNOWN)
-    {   
+    {
+        global_logger->error(
+            "Invalid indexType parameter in the request");
         res.status = 400;
         setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
                              "Invalid indexType parameter in the request");
@@ -183,7 +213,7 @@ void HttpServer::insertHandler(const httplib::Request &req,
         break;
     }
 
-    // 设置返回码为成功 
+    // 设置返回码为成功
     rapidjson::Document json_response;
     json_response.SetObject();
     rapidjson::Document::AllocatorType &allocator = json_response.GetAllocator();
@@ -226,25 +256,25 @@ void HttpServer::setJsonResponse(const rapidjson::Document &json_response, httpl
  *          2. 添加错误码（retcode）
  *          3. 添加错误信息（errorMsg）
  *          4. 将 JSON 转换为 HTTP 响应
- * 
+ *
  * @param res HTTP响应对象的引用，用于存储最终的响应内容
  * @param error_code 错误码，表示错误类型
  * @param error_message 错误信息描述
  */
-void HttpServer::setErrorJsonResponse(httplib::Response& res, int error_code, const std::string& error_message)
+void HttpServer::setErrorJsonResponse(httplib::Response &res, int error_code, const std::string &error_message)
 {
     // 创建 JSON 文档对象
     rapidjson::Document json_response;
     // 设置为对象类型
     json_response.SetObject();
     // 获取分配器，用于内存分配
-    rapidjson::Document::AllocatorType& allocator = json_response.GetAllocator();
-    
+    rapidjson::Document::AllocatorType &allocator = json_response.GetAllocator();
+
     // 添加错误码字段
     json_response.AddMember(RESPONSE_RETCODE, error_code, allocator);
     // 添加错误信息字段，使用 StringRef 避免字符串拷贝
     json_response.AddMember(RESPONSE_MESSAGE, rapidjson::StringRef(error_message.c_str()), allocator);
-    
+
     // 将 JSON 文档转换为 HTTP 响应
     setJsonResponse(json_response, res);
 }

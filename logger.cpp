@@ -28,7 +28,7 @@ void init_global_logger() {
         global_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
         
         // 设置默认日志级别为debug
-        // 这意味着会显示debug及以上级别的所有日志
+        // 需要更改时再手动设置
         global_logger->set_level(spdlog::level::debug);
         
         // 输出初始化成功信息
