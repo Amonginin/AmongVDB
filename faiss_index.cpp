@@ -1,4 +1,6 @@
 #include "faiss_index.h"
+#include "logger.h"
+#include "constants.h"
 #include <iostream>
 #include <vector>
 

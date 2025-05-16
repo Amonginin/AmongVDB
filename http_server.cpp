@@ -2,6 +2,10 @@
 #include "faiss_index.h"
 #include "index_factory.h"
 #include "constants.h"
+#include "logger.h"
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
 
 // NOTE: 括号内的都是传入的参数，括号外的是成员变量
 // 使用cpp-httplib库创建HTTP服务器对象server，并设置监听的主机和端口
@@ -99,12 +103,15 @@ void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &r
     switch (index_type)
     {
     case IndexFactory::IndexType::FLAT:
+    {
         // NOTE: static_cast
         FaissIndex *faiss_index = static_cast<FaissIndex *>(index);
         // 执行向量搜索，返回<向量ID, 距离>对
         results = faiss_index->search_vectors(query, k);
         break;
+    }
     // TODO: 支持其他索引类型
+    case IndexFactory::IndexType::UNKNOWN:
     default:
         break;
     }
@@ -184,7 +191,7 @@ void HttpServer::insertHandler(const httplib::Request &req,
     }
     // 获取请求中的插入参数：id待插入向量的唯一标识
     uint64_t id = json_request[REQUEST_ID].GetUint64();
-    globalLogger->debug("Insert parameters: id = {}", id);  
+    globalLogger->debug("Insert parameters: id = {}", id);
 
     // 获取请求中的插入参数：indexType索引类型
     IndexFactory::IndexType index_type = getIndexTypeFromRequest(json_request);
@@ -205,10 +212,13 @@ void HttpServer::insertHandler(const httplib::Request &req,
     switch (index_type)
     {
     case IndexFactory::IndexType::FLAT:
+    {
         FaissIndex *faiss_index = static_cast<FaissIndex *>(index);
         faiss_index->insert_vectors(data, id);
         break;
+    }
     // TODO: 支持其他索引类型
+    case IndexFactory::IndexType::UNKNOWN:
     default:
         break;
     }
@@ -273,7 +283,7 @@ void HttpServer::setErrorJsonResponse(httplib::Response &res, int error_code, co
     // 添加错误码字段
     json_response.AddMember(RESPONSE_RETCODE, error_code, allocator);
     // 添加错误信息字段，使用 StringRef 避免字符串拷贝
-    json_response.AddMember(RESPONSE_MESSAGE, rapidjson::StringRef(error_message.c_str()), allocator);
+    json_response.AddMember(RESPONSE_ERROR_MSG, rapidjson::StringRef(error_message.c_str()), allocator);
 
     // 将 JSON 文档转换为 HTTP 响应
     setJsonResponse(json_response, res);
@@ -314,4 +324,31 @@ bool HttpServer::isRequestValid(const rapidjson::Document &json_request,
     default:
         return false;
     }
+}
+
+/**
+ * @brief 从请求中获取索引类型
+ * @details 该函数从 JSON 请求中解析索引类型参数：
+ *          1. 如果请求中包含 indexType 字段，则根据其值返回对应的索引类型
+ *          2. 如果请求中不包含 indexType 字段，则返回 UNKNOWN 类型
+ * @param json_request JSON 请求文档对象
+ * @return IndexFactory::IndexType 返回解析出的索引类型
+ * @note 目前仅支持 FLAT 类型的索引，其他类型将返回 UNKNOWN
+ */
+IndexFactory::IndexType HttpServer::getIndexTypeFromRequest(const rapidjson::Document &json_request)
+{
+    // 如果请求中包含 indexType 字段
+    if (json_request.HasMember(REQUEST_INDEX_TYPE))
+    {
+        // 获取索引类型字符串
+        std::string indexTypeStr = json_request[REQUEST_INDEX_TYPE].GetString();
+        // 根据字符串值返回对应的索引类型
+        if (indexTypeStr == "FLAT")
+        {
+            return IndexFactory::IndexType::FLAT;
+        }
+        // TODO: 支持其他索引类型
+    }
+    // 如果请求中不包含 indexType 字段或类型未知，返回 UNKNOWN
+    return IndexFactory::IndexType::UNKNOWN;
 }

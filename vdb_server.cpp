@@ -31,10 +31,10 @@ int main(int argc, char* argv[]) {
     int dim = 1;
     
     // 获取全局索引工厂实例
-    IndexFactory* glovalIndexFactory = getGlobalIndexFactory();
-    if (glovalIndexFactory == nullptr) {
+    IndexFactory* globalIndexFactory = getGlobalIndexFactory();
+    if (globalIndexFactory == nullptr) {
         // 如果获取索引工厂失败，记录错误并退出
-        LOG_ERROR("Failed to get global index factory");
+        globalLogger->info("Failed to get global index factory");
         return 1;
     }
     

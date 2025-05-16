@@ -1,5 +1,5 @@
 #include "index_factory.h"
-#include "faiss/Index.h"
+#include "faiss/IndexFlat.h"
 #include "faiss/IndexIDMap.h"
 
 // 创建一个名为 globalIndexFactory 的 IndexFactory 类型的全局实例
@@ -31,8 +31,8 @@ void IndexFactory::init(IndexType type, int dim, MetricType metric)
     // 根据传入的度量类型参数，确定使用FAISS的哪种度量方式
     // MetricType::L2 对应欧氏距离，否则使用内积（余弦相似度）
     faiss::MetricType faiss_metric = (metric == MetricType::L2) ? faiss::METRIC_L2 : faiss::METRIC_INNER_PRODUCT;
-    
-    // 根据索引类型选择不同的索引实现
+
+    // 根据索引类型创建相应的索引实例
     switch (type)
     {
     case IndexType::FLAT:
@@ -44,6 +44,7 @@ void IndexFactory::init(IndexType type, int dim, MetricType metric)
         // 4. 存入索引映射表，以便后续通过类型访问
         index_map[type] = new FaissIndex(new faiss::IndexIDMap(new faiss::IndexFlat(dim, faiss_metric)));
         break;
+    case IndexType::UNKNOWN:
     default:
         // 未知索引类型不做处理
         break;
