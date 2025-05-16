@@ -14,7 +14,7 @@ FaissIndex::FaissIndex(faiss::Index *index) : index(index){}
  *
  * @note 当前版本每次只写入一条数据
  */
-void FaissIndex::insert_vectors(const std::vector<float> &data, uint64_t label)
+void FaissIndex::insertVectors(const std::vector<float> &data, uint64_t label)
 {
     // // 校验输入数据是否为null
     // if (index == nullptr)
@@ -54,7 +54,7 @@ void FaissIndex::insert_vectors(const std::vector<float> &data, uint64_t label)
  *
  * @note 返回的向量ID和距离值按照查询结果顺序排列
  */
-std::pair<std::vector<long>, std::vector<float>> FaissIndex::search_vectors(const std::vector<float> &query, int k)
+std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const std::vector<float> &query, int k)
 {
     // // 校验输入数据是否为null
     // if (index == nullptr)
