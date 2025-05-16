@@ -1,1 +1,5 @@
+# 测试语句
 curl -X POST -H "Content-Type: application/json" -d '{"vectors": [0.8], "id": 2, "indexType":"FLAT"}' http://localhost:9729/insert
+
+# 期望返回
+{"retcode":0}
