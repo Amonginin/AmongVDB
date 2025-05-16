@@ -1,4 +1,5 @@
 #include "index_factory.h"
+#include "hnswlib_index.h"
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIDMap.h"
 
@@ -20,13 +21,14 @@ IndexFactory *getGlobalIndexFactory()
 /**
  * @brief 初始化向量索引
  * 
- * @param type 索引类型，当前支持FLAT类型索引
+ * @param type 索引类型，当前支持FLAT、HNSW 类型索引
  * @param dim 向量维度
- * @param metric 距离度量方式（L2欧氏距离或内积）
+ * @param numData 索引能容纳的最大向量数量
+ * @param metric 距离度量方式（默认L2欧氏距离）
  * 
  * @note 此函数会根据指定的索引类型、维度和度量方式创建相应的FAISS索引
  */
-void IndexFactory::init(IndexType type, int dim, MetricType metric)
+void IndexFactory::init(IndexType type, int dim, int numData, MetricType metric)
 {
     // 根据传入的度量类型参数，确定使用FAISS的哪种度量方式
     // MetricType::L2 对应欧氏距离，否则使用内积（余弦相似度）
@@ -36,13 +38,18 @@ void IndexFactory::init(IndexType type, int dim, MetricType metric)
     switch (type)
     {
     case IndexType::FLAT:
-        // 创建一个平坦索引（暴力搜索，无压缩）
-        // 步骤：
+        // 创建一个扁平索引（暴力搜索，无压缩）
         // 1. 创建基础的IndexFlat对象，指定维度和度量方式
         // 2. 用IndexIDMap包装，以支持自定义ID映射
         // 3. 用FaissIndex进一步包装，适配我们系统的接口
         // 4. 存入索引映射表，以便后续通过类型访问
         index_map[type] = new FaissIndex(new faiss::IndexIDMap(new faiss::IndexFlat(dim, faiss_metric)));
+        break;  
+    case IndexType::HNSW:
+        // 创建一个HNSW索引
+        // 1. 创建HNSWLibIndex对象
+        // 2. 存入索引映射表，以便后续通过类型访问
+        index_map[type] = new HNSWLibIndex(dim, numData, metric,16,200);
         break;
     case IndexType::UNKNOWN:
     default:
