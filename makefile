@@ -11,7 +11,7 @@ LDFLAGS = -L../faiss/build/faiss -lfaiss -fopenmp -lopenblas -lpthread
 TARGET = build/vdb_server
 
 # 源文件
-SOURCES = vdb_server.cpp faiss_index.cpp http_server.cpp index_factory.cpp logger.cpp
+SOURCES = vdb_server.cpp faiss_index.cpp http_server.cpp index_factory.cpp logger.cpp hnswlib_index.cpp
 
 # 对象文件
 OBJECTS = $(SOURCES:%.cpp=build/%.o)

@@ -1,0 +1,7 @@
+# 测试语句
+curl -X POST -H "Content-Type: application/json" -d '{"vectors": [0.5], "k": 2, "indexType":"HNSW"}' http://localhost:9729/search
+
+# 期望返回
+# 在 hnswlib_index.cpp 中，直接使用了 k 参数来创建结果向量
+# 这导致即使库中只有一个向量，也会返回 k 个结果（重复的结果）（）。
+{"vectors":[3,3],"distances":[0.09000000357627869,0.09000000357627869],"retcode":0}

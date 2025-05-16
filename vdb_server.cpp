@@ -29,6 +29,8 @@ int main(int argc, char* argv[]) {
 
     // 设置向量维度
     int dim = 1;
+    // 设置hnsw索引能容纳的最大向量数量
+    int numData = 1000;
     
     // 获取全局索引工厂实例
     IndexFactory* globalIndexFactory = getGlobalIndexFactory();
@@ -38,8 +40,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // 初始化FLAT类型的索引，用于向量存储和检索
+    // 初始化FLAT类型的索引
     globalIndexFactory->init(IndexFactory::IndexType::FLAT, dim);
+    // 初始化HNSW类型的索引
+    globalIndexFactory->init(IndexFactory::IndexType::HNSW, dim, numData);
     globalLogger->info("Global index factory initialized");
 
     // 创建HTTP服务器实例，监听本地9729端口

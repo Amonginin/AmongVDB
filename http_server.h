@@ -13,7 +13,6 @@ public:
     {
         SEARCH,
         INSERT,
-        DELETE,
         UNKNOWN = -1
     };
 

@@ -27,3 +27,8 @@
 // 响应其他字段
 #define RESPONSE_ERROR_MSG "errorMsg"              // 错误信息字段名
 #define RESPONSE_CONTENT_TYPE_JSON "application/json"  // HTTP响应Content-Type
+
+// 索引类型
+#define INDEX_TYPE_FLAT "FLAT"
+#define INDEX_TYPE_HNSW "HNSW"
+    
