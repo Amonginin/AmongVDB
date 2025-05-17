@@ -1,0 +1,23 @@
+# IDE 工作区配置
+.idea/
+*.code-workspace
+
+# 编译输出
+build/
+*.o
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 依赖目录
+node_modules/
+vendor/
+
+# 日志文件
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
