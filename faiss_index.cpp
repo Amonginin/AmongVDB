@@ -1,6 +1,7 @@
 #include "faiss_index.h"
 #include "logger.h"
 #include "constants.h"
+#include "faiss/IndexIDMap.h"
 #include <iostream>
 #include <vector>
 
@@ -62,4 +63,34 @@ std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const
     }
 
     return {indices, distances};
+}
+
+/**
+ * @brief 从FAISS索引中删除指定ID的向量
+ * 
+ * @param ids 要删除的向量ID列表
+ * 
+ * @note 该函数要求底层的FAISS索引必须是IndexIDMap类型
+ * @note 如果底层索引不是IndexIDMap类型，将抛出运行时异常
+ * 
+ * @throws std::runtime_error 当底层索引不是IndexIDMap类型时抛出异常
+ */
+void FaissIndex::removeVectors(const std::vector<long> &ids)
+{
+    // 将底层索引转换为IndexIDMap类型
+    faiss::IndexIDMap *idMap = static_cast<faiss::IndexIDMap *>(index);
+    if (idMap)
+    {
+        // 创建一个IDSelectorBatch对象，用于指定要删除的ID
+        faiss::IDSelectorBatch idSelectorBatch(ids.size(), ids.data());
+        // 使用IDSelectorBatch删除指定的向量
+        idMap->remove_ids(idSelectorBatch);
+    }
+    else
+    {
+        // 记录错误日志
+        globalLogger->error("Faiss removeVectors failed: Underlying index is not an IndexIDMap");
+        // 抛出运行时异常
+        throw std::runtime_error("Underlying Faiss index is not an IndexIDMap");
+    }
 }

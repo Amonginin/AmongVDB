@@ -16,6 +16,9 @@ public:
     // 返回一个包含两个动态数组的pair，第一个动态数组是找到的向量的标签，第二个动态数组是相应的距离
     std::pair<std::vector<long>, std::vector<float>> searchVectors(const std::vector<float> &query, int k);
 
+    // 公共成员函数，用于从索引中删除指定id的向量
+    void removeVectors(const std::vector<long>& ids);
+
 private:
     // 私有成员变量，指向FAISS索引对象的指针
     faiss::Index *index; 
