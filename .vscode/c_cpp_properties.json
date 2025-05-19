@@ -4,7 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/../faiss"
+                "${workspaceFolder}/../faiss",
+                "${workspaceFolder}/../rocksdb/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
