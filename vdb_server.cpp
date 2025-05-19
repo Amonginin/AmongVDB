@@ -46,8 +46,13 @@ int main(int argc, char* argv[]) {
     globalIndexFactory->init(IndexFactory::IndexType::HNSW, dim, numData);
     globalLogger->info("Global index factory initialized");
 
+    // 初始化VectorDatabase对象
+    std::string dbPath = "ScalarStorage"; // 数据库路径，本项目的ScalarStorage目录下
+    VectorDatabase vectorDatabase(dbPath);
+    globalLogger->info("VectorDatabase initialized");
+
     // 创建HTTP服务器实例，监听本地9729端口
-    HttpServer http_server("localhost", 9729);
+    HttpServer http_server("localhost", 9729, &vectorDatabase);
     globalLogger->info("HTTP server created");
     // 启动HTTP服务器
     http_server.start();

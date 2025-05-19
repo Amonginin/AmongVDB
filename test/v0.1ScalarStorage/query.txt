@@ -1,0 +1,5 @@
+# 测试请求
+curl -X POST -H "Content-Type: application/json" -d '{"id": 3}' http://localhost:9729/query
+
+# 期望返回
+{"vectors":[0.555555],"id":3,"indexType":"FLAT","Name":"hello","Ci":1111,"retcode":0}
