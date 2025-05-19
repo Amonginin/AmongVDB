@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     globalLogger->info("Global index factory initialized");
 
     // 初始化VectorDatabase对象
-    std::string dbPath = "ScalarStorage";
+    std::string dbPath = "ScalarStorage"; // 数据库路径，本项目的ScalarStorage目录下
     VectorDatabase vectorDatabase(dbPath);
     globalLogger->info("VectorDatabase initialized");
 

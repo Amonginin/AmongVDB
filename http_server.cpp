@@ -296,6 +296,19 @@ void HttpServer::searchHandler(const httplib::Request &req, httplib::Response &r
     setJsonResponse(json_response, res);
 }
 
+/**
+ * @brief 处理向量插入请求
+ * @param req HTTP请求对象，包含插入请求的参数
+ * @param res HTTP响应对象，用于返回处理结果
+ * 
+ * 该函数处理向量的插入请求，主要功能包括：
+ * 1. 解析JSON格式的请求体
+ * 2. 验证请求参数的合法性
+ * 3. 提取向量数据和ID
+ * 4. 根据索引类型选择对应的索引实例
+ * 5. 执行向量插入操作
+ * 6. 返回处理结果
+ */
 void HttpServer::insertHandler(const httplib::Request &req,
                                httplib::Response &res)
 {
@@ -385,6 +398,18 @@ void HttpServer::insertHandler(const httplib::Request &req,
     setJsonResponse(jsonResponse, res);
 }
 
+/**
+ * @brief 处理向量更新请求
+ * @param req HTTP请求对象，包含更新请求的参数
+ * @param res HTTP响应对象，用于返回处理结果
+ * 
+ * 该函数处理向量的更新请求，主要功能包括：
+ * 1. 解析JSON格式的请求体
+ * 2. 验证请求参数的合法性
+ * 3. 提取向量ID和索引类型
+ * 4. 调用向量数据库的upsert方法执行更新操作
+ * 5. 返回处理结果
+ */
 void HttpServer::upsertHandler(const httplib::Request &req, httplib::Response &res)
 {
     // 打印接收到了更新请求
@@ -430,6 +455,18 @@ void HttpServer::upsertHandler(const httplib::Request &req, httplib::Response &r
     setJsonResponse(jsonResponse, res);
 }
 
+/**
+ * @brief 处理向量查询请求
+ * @param req HTTP请求对象，包含查询请求的参数
+ * @param res HTTP响应对象，用于返回处理结果
+ * 
+ * 该函数处理向量的查询请求，主要功能包括：
+ * 1. 解析JSON格式的请求体
+ * 2. 验证请求参数的合法性
+ * 3. 提取向量ID
+ * 4. 调用向量数据库的query方法执行查询操作
+ * 5. 将查询结果转换为JSON格式并返回
+ */
 void HttpServer::queryHandler(const httplib::Request &req, httplib::Response &res)
 {
     // 打印接收到了查询请求
