@@ -10,8 +10,8 @@
 
 // NOTE: 括号内的都是传入的参数，括号外的是成员变量
 // 使用cpp-httplib库创建HTTP服务器对象server，并设置监听的主机和端口
-HttpServer::HttpServer(const std::string &host, int port)
-    : host(host), port(port)
+HttpServer::HttpServer(const std::string &host, int port, VectorDatabase *vectorDatabase)
+    : host(host), port(port), vectorDatabase(vectorDatabase)
 {
     // NOTE: lambda表达式写法
     // 当请求路径为 "/insert" 时，调用 insertHandler 函数处理请求
@@ -20,11 +20,151 @@ HttpServer::HttpServer(const std::string &host, int port)
     // 当请求路径为 "/search" 时，调用 searchHandler 函数处理请求
     server.Post("/search", [&](const httplib::Request &req, httplib::Response &res)
                 { searchHandler(req, res); });
+    // 当请求路径为 "/upsert" 时，调用 upsertHandler 函数处理请求
+    server.Post("/upsert", [&](const httplib::Request &req, httplib::Response &res)
+                { upsertHandler(req, res); });
+    // 当请求路径为 "/query" 时，调用 queryHandler 函数处理请求
+    server.Post("/query", [&](const httplib::Request &req, httplib::Response &res)
+                { queryHandler(req, res); });
 }
 
 void HttpServer::start()
 {
     server.listen(host.c_str(), port);
+}
+
+/**
+ * @brief 将 RapidJSON Document 对象转换为 HTTP 响应
+ * @details 该方法执行以下步骤：
+ *          1. 创建一个字符串缓冲区用于存储 JSON 字符串
+ *          2. 使用 RapidJSON Writer 将 Document 对象序列化为 JSON 字符串
+ *          3. 设置 HTTP 响应的内容类型和主体
+ * @param json_response RapidJSON Document 对象，其具体内容是要发送的 JSON 数据
+ * @param res HTTP 响应对象，用于设置响应内容
+ */
+void HttpServer::setJsonResponse(const rapidjson::Document &json_response, httplib::Response &res)
+{
+    // 1.创建 StringBuffer 对象，用于存储序列化后的 JSON 字符串
+    rapidjson::StringBuffer buffer;
+
+    // 2.创建 Writer 对象，用于将 Document 对象写入 buffer
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+
+    // 3.使用 Accept 方法遍历 Document 对象的所有节点
+    // 并通过 Writer 将其转换为 JSON 字符串
+    json_response.Accept(writer);
+
+    // 4.设置 HTTP 响应
+    // - 使用 buffer.GetString() 获取生成的 JSON 字符串
+    // - RESPONSE_CONTENT_TYPE_JSON 指定内容类型为 "application/json"
+    res.set_content(buffer.GetString(), RESPONSE_CONTENT_TYPE_JSON);
+}
+
+/**
+ * @brief 设置错误响应的 JSON 格式
+ * @details 该方法用于构建标准的错误响应格式，包含以下功能：
+ *          1. 创建一个新的 JSON Document 对象
+ *          2. 添加错误码（retcode）
+ *          3. 添加错误信息（errorMsg）
+ *          4. 将 JSON 转换为 HTTP 响应
+ *
+ * @param res HTTP响应对象的引用，用于存储最终的响应内容
+ * @param error_code 错误码，表示错误类型
+ * @param error_message 错误信息描述
+ */
+void HttpServer::setErrorJsonResponse(httplib::Response &res, int error_code, const std::string &error_message)
+{
+    // 创建 JSON 文档对象
+    rapidjson::Document json_response;
+    // 设置为对象类型
+    json_response.SetObject();
+    // 获取分配器，用于内存分配
+    rapidjson::Document::AllocatorType &allocator = json_response.GetAllocator();
+
+    // 添加错误码字段
+    json_response.AddMember(RESPONSE_RETCODE, error_code, allocator);
+    // 添加错误信息字段，使用 StringRef 避免字符串拷贝
+    json_response.AddMember(RESPONSE_ERROR_MSG, rapidjson::StringRef(error_message.c_str()), allocator);
+
+    // 将 JSON 文档转换为 HTTP 响应
+    setJsonResponse(json_response, res);
+}
+
+/**
+ * @brief 验证请求参数的合法性
+ * @details 根据不同的检查类型验证JSON请求中必要参数的存在性和格式：
+ *          - SEARCH类型：检查vectors、k和index_type参数
+ *          - INSERT类型：检查vectors、id和index_type参数
+ * @param json_request JSON请求文档对象
+ * @param check_type 检查类型（SEARCH或INSERT）
+ * @return bool 如果所有必要参数都存在且格式正确则返回true，否则返回false
+ */
+bool HttpServer::isRequestValid(const rapidjson::Document &json_request,
+                                CheckType check_type)
+{
+    switch (check_type)
+    {
+    case CheckType::SEARCH:
+        // 检查搜索请求必要参数：
+        // 1. vectors字段必须存在
+        return json_request.HasMember(REQUEST_VECTORS) &&
+               // 2. k字段必须存在
+               json_request.HasMember(REQUEST_K) &&
+               // 3. index_type字段如果存在必须是字符串类型
+               (!json_request.HasMember(REQUEST_INDEX_TYPE) ||
+                json_request[REQUEST_INDEX_TYPE].IsString());
+    case CheckType::INSERT:
+        // 检查插入请求必要参数：
+        // 1. vectors字段必须存在（待插入的向量数据）
+        return json_request.HasMember(REQUEST_VECTORS) &&
+               // 2. id字段必须存在（向量的唯一标识）
+               json_request.HasMember(REQUEST_ID) &&
+               // 3. index_type字段如果存在必须是字符串类型
+               (!json_request.HasMember(REQUEST_INDEX_TYPE) ||
+                json_request[REQUEST_INDEX_TYPE].IsString());
+    case CheckType::UPSERT:
+        // 检查更新请求必要参数：
+        // 1. vectors字段必须存在（待更新向量数据）
+        return json_request.HasMember(REQUEST_VECTORS) &&
+               // 2. id字段必须存在（向量的唯一标识）
+               json_request.HasMember(REQUEST_ID) &&
+               // 3. index_type字段如果存在必须是字符串类型
+               (!json_request.HasMember(REQUEST_INDEX_TYPE) ||
+                json_request[REQUEST_INDEX_TYPE].IsString());
+    default:
+        return false;
+    }
+}
+
+/**
+ * @brief 从请求中获取索引类型
+ * @details 该函数从 JSON 请求中解析索引类型参数：
+ *          1. 如果请求中包含 indexType 字段，则根据其值返回对应的索引类型
+ *          2. 如果请求中不包含 indexType 字段，则返回 UNKNOWN 类型
+ * @param json_request JSON 请求文档对象
+ * @return IndexFactory::IndexType 返回解析出的索引类型
+ * @note 目前仅支持 FLAT 类型的索引，其他类型将返回 UNKNOWN
+ */
+IndexFactory::IndexType HttpServer::getIndexTypeFromRequest(const rapidjson::Document &json_request)
+{
+    // 如果请求中包含 indexType 字段
+    if (json_request.HasMember(REQUEST_INDEX_TYPE))
+    {
+        // 获取索引类型字符串
+        std::string indexTypeStr = json_request[REQUEST_INDEX_TYPE].GetString();
+        // 根据字符串值返回对应的索引类型
+        if (indexTypeStr == INDEX_TYPE_FLAT)
+        {
+            return IndexFactory::IndexType::FLAT;
+        }
+        else if (indexTypeStr == INDEX_TYPE_HNSW)
+        {
+            return IndexFactory::IndexType::HNSW;
+        }
+        // TODO: 支持其他索引类型
+    }
+    // 如果请求中不包含 indexType 字段或类型未知，返回 UNKNOWN
+    return IndexFactory::IndexType::UNKNOWN;
 }
 
 /**
@@ -163,14 +303,14 @@ void HttpServer::insertHandler(const httplib::Request &req,
     globalLogger->debug("Received insert request");
 
     // 解析请求体中的JSON请求内容
-    rapidjson::Document json_request;
-    json_request.Parse(req.body.c_str());
+    rapidjson::Document jsonRequest;
+    jsonRequest.Parse(req.body.c_str());
 
     // 打印用户的输入参数
     globalLogger->info("Insert request parameters: {}", req.body);
 
     // 检查JSON文档是否为有效的对象
-    if (!json_request.IsObject())
+    if (!jsonRequest.IsObject())
     {
         globalLogger->error("Invalid JSON request");
         res.status = 400;
@@ -180,7 +320,7 @@ void HttpServer::insertHandler(const httplib::Request &req,
     }
 
     // 检查请求参数的合法性（vectors和label参数是否存在且格式正确）
-    if (!isRequestValid(json_request, CheckType::INSERT))
+    if (!isRequestValid(jsonRequest, CheckType::INSERT))
     {
         globalLogger->error(
             "Missing vectors or id parameter in the request");
@@ -192,17 +332,17 @@ void HttpServer::insertHandler(const httplib::Request &req,
 
     // 获取请求中的插入参数：data待插入向量
     std::vector<float> data;
-    for (const auto &d : json_request[REQUEST_VECTORS].GetArray())
+    for (const auto &d : jsonRequest[REQUEST_VECTORS].GetArray())
     {
         data.push_back(d.GetFloat());
     }
     // 获取请求中的插入参数：id待插入向量的唯一标识
-    uint64_t id = json_request[REQUEST_ID].GetUint64();
+    uint64_t id = jsonRequest[REQUEST_ID].GetUint64();
     globalLogger->debug("Insert parameters: id = {}", id);
 
     // 获取请求中的插入参数：indexType索引类型
-    IndexFactory::IndexType index_type = getIndexTypeFromRequest(json_request);
-    if (index_type == IndexFactory::IndexType::UNKNOWN)
+    IndexFactory::IndexType indexType = getIndexTypeFromRequest(jsonRequest);
+    if (indexType == IndexFactory::IndexType::UNKNOWN)
     {
         globalLogger->error(
             "Invalid indexType parameter in the request");
@@ -213,10 +353,10 @@ void HttpServer::insertHandler(const httplib::Request &req,
     }
 
     // 从全局索引工厂获取对应类型的索引实例
-    void *index = getGlobalIndexFactory()->getIndex(index_type);
+    void *index = getGlobalIndexFactory()->getIndex(indexType);
 
     // 根据索引类型初始化索引对象并调用insert_vectors函数
-    switch (index_type)
+    switch (indexType)
     {
     case IndexFactory::IndexType::FLAT:
     {
@@ -237,135 +377,103 @@ void HttpServer::insertHandler(const httplib::Request &req,
     }
 
     // 设置返回码为成功
-    rapidjson::Document json_response;
-    json_response.SetObject();
-    rapidjson::Document::AllocatorType &allocator = json_response.GetAllocator();
-    json_response.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
+    rapidjson::Document jsonResponse;
+    jsonResponse.SetObject();
+    rapidjson::Document::AllocatorType &allocator = jsonResponse.GetAllocator();
+    jsonResponse.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
     // 设置JSON响应
-    setJsonResponse(json_response, res);
+    setJsonResponse(jsonResponse, res);
 }
 
-/**
- * @brief 将 RapidJSON Document 对象转换为 HTTP 响应
- * @details 该方法执行以下步骤：
- *          1. 创建一个字符串缓冲区用于存储 JSON 字符串
- *          2. 使用 RapidJSON Writer 将 Document 对象序列化为 JSON 字符串
- *          3. 设置 HTTP 响应的内容类型和主体
- * @param json_response RapidJSON Document 对象，其具体内容是要发送的 JSON 数据
- * @param res HTTP 响应对象，用于设置响应内容
- */
-void HttpServer::setJsonResponse(const rapidjson::Document &json_response, httplib::Response &res)
+void HttpServer::upsertHandler(const httplib::Request &req, httplib::Response &res)
 {
-    // 1.创建 StringBuffer 对象，用于存储序列化后的 JSON 字符串
-    rapidjson::StringBuffer buffer;
+    // 打印接收到了更新请求
+    globalLogger->debug("Received upsert request");
 
-    // 2.创建 Writer 对象，用于将 Document 对象写入 buffer
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    // 解析请求体中的JSON请求内容
+    rapidjson::Document jsonRequest;
+    jsonRequest.Parse(req.body.c_str());
 
-    // 3.使用 Accept 方法遍历 Document 对象的所有节点
-    // 并通过 Writer 将其转换为 JSON 字符串
-    json_response.Accept(writer);
+    // 打印用户的输入参数
+    globalLogger->info("Upsert request parameters: {}", req.body);
 
-    // 4.设置 HTTP 响应
-    // - 使用 buffer.GetString() 获取生成的 JSON 字符串
-    // - RESPONSE_CONTENT_TYPE_JSON 指定内容类型为 "application/json"
-    res.set_content(buffer.GetString(), RESPONSE_CONTENT_TYPE_JSON);
-}
-
-/**
- * @brief 设置错误响应的 JSON 格式
- * @details 该方法用于构建标准的错误响应格式，包含以下功能：
- *          1. 创建一个新的 JSON Document 对象
- *          2. 添加错误码（retcode）
- *          3. 添加错误信息（errorMsg）
- *          4. 将 JSON 转换为 HTTP 响应
- *
- * @param res HTTP响应对象的引用，用于存储最终的响应内容
- * @param error_code 错误码，表示错误类型
- * @param error_message 错误信息描述
- */
-void HttpServer::setErrorJsonResponse(httplib::Response &res, int error_code, const std::string &error_message)
-{
-    // 创建 JSON 文档对象
-    rapidjson::Document json_response;
-    // 设置为对象类型
-    json_response.SetObject();
-    // 获取分配器，用于内存分配
-    rapidjson::Document::AllocatorType &allocator = json_response.GetAllocator();
-
-    // 添加错误码字段
-    json_response.AddMember(RESPONSE_RETCODE, error_code, allocator);
-    // 添加错误信息字段，使用 StringRef 避免字符串拷贝
-    json_response.AddMember(RESPONSE_ERROR_MSG, rapidjson::StringRef(error_message.c_str()), allocator);
-
-    // 将 JSON 文档转换为 HTTP 响应
-    setJsonResponse(json_response, res);
-}
-
-/**
- * @brief 验证请求参数的合法性
- * @details 根据不同的检查类型验证JSON请求中必要参数的存在性和格式：
- *          - SEARCH类型：检查vectors、k和index_type参数
- *          - INSERT类型：检查vectors、id和index_type参数
- * @param json_request JSON请求文档对象
- * @param check_type 检查类型（SEARCH或INSERT）
- * @return bool 如果所有必要参数都存在且格式正确则返回true，否则返回false
- */
-bool HttpServer::isRequestValid(const rapidjson::Document &json_request,
-                                CheckType check_type)
-{
-    switch (check_type)
+    // 检查JSON文档是否为有效的对象
+    if (!jsonRequest.IsObject())
     {
-    case CheckType::SEARCH:
-        // 检查搜索请求必要参数：
-        // 1. vectors字段必须存在
-        return json_request.HasMember(REQUEST_VECTORS) &&
-               // 2. k字段必须存在
-               json_request.HasMember(REQUEST_K) &&
-               // 3. index_type字段如果存在必须是字符串类型
-               (!json_request.HasMember(REQUEST_INDEX_TYPE) ||
-                json_request[REQUEST_INDEX_TYPE].IsString());
-    case CheckType::INSERT:
-        // 检查插入请求必要参数：
-        // 1. vectors字段必须存在（待插入的向量数据）
-        return json_request.HasMember(REQUEST_VECTORS) &&
-               // 2. id字段必须存在（向量的唯一标识）
-               json_request.HasMember(REQUEST_ID) &&
-               // 3. index_type字段如果存在必须是字符串类型
-               (!json_request.HasMember(REQUEST_INDEX_TYPE) ||
-                json_request[REQUEST_INDEX_TYPE].IsString());
-    default:
-        return false;
+        globalLogger->error("Invalid JSON request");
+        res.status = 400;
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Invalid JSON request");
+        return;
     }
+
+    // 检查请求参数的合法性（vectors和id参数是否存在且格式正确）
+    if (!isRequestValid(jsonRequest, CheckType::UPSERT)){
+        globalLogger->error("Missing vectors or id parameter in the request");
+        res.status = 400;
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Missing vectors or id parameters in the request");
+        return;
+    }
+
+    // 获取请求中的更新参数：id待更新向量的唯一标识
+    uint64_t id = jsonRequest[REQUEST_ID].GetUint64();
+    globalLogger->debug("Upsert parameters: id = {}", id);
+    // 获取请求参数中的索引类型
+    IndexFactory::IndexType indexType = getIndexTypeFromRequest(jsonRequest);
+    vectorDatabase->upsert(id, jsonRequest, indexType);
+
+    rapidjson::Document jsonResponse;
+    jsonResponse.SetObject();
+    rapidjson::Document::AllocatorType &allocator = jsonResponse.GetAllocator();
+    jsonResponse.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
+    setJsonResponse(jsonResponse, res);
 }
 
-/**
- * @brief 从请求中获取索引类型
- * @details 该函数从 JSON 请求中解析索引类型参数：
- *          1. 如果请求中包含 indexType 字段，则根据其值返回对应的索引类型
- *          2. 如果请求中不包含 indexType 字段，则返回 UNKNOWN 类型
- * @param json_request JSON 请求文档对象
- * @return IndexFactory::IndexType 返回解析出的索引类型
- * @note 目前仅支持 FLAT 类型的索引，其他类型将返回 UNKNOWN
- */
-IndexFactory::IndexType HttpServer::getIndexTypeFromRequest(const rapidjson::Document &json_request)
+void HttpServer::queryHandler(const httplib::Request &req, httplib::Response &res)
 {
-    // 如果请求中包含 indexType 字段
-    if (json_request.HasMember(REQUEST_INDEX_TYPE))
+    // 打印接收到了查询请求
+    globalLogger->debug("Received query request");
+
+    // 解析请求体中的JSON请求内容
+    rapidjson::Document jsonRequest;
+    jsonRequest.Parse(req.body.c_str());
+
+    // 打印用户的输入参数
+    globalLogger->info("Query request parameters: {}", req.body);
+
+    // 检查JSON文档是否为有效的对象
+    if (!jsonRequest.IsObject())
     {
-        // 获取索引类型字符串
-        std::string indexTypeStr = json_request[REQUEST_INDEX_TYPE].GetString();
-        // 根据字符串值返回对应的索引类型
-        if (indexTypeStr == INDEX_TYPE_FLAT)
-        {
-            return IndexFactory::IndexType::FLAT;
-        }
-        else if (indexTypeStr == INDEX_TYPE_HNSW)
-        {
-            return IndexFactory::IndexType::HNSW;
-        }
-        // TODO: 支持其他索引类型
+        globalLogger->error("Invalid JSON request");
+        res.status = 400;
+        setErrorJsonResponse(res, RESPONSE_RETCODE_ERROR,
+                             "Invalid JSON request");
+        return;
     }
-    // 如果请求中不包含 indexType 字段或类型未知，返回 UNKNOWN
-    return IndexFactory::IndexType::UNKNOWN;
+
+    // 从JSON请求中获取查询参数：id待查询数据的唯一标识
+    uint64_t id = jsonRequest[REQUEST_ID].GetUint64();
+    globalLogger->debug("Query parameters: id = {}", id);
+
+    // 查询JSON数据
+    rapidjson::Document jsonData = vectorDatabase->query(id);
+
+    // 将结果转换为JSON格式
+    rapidjson::Document jsonResponse;
+    jsonResponse.SetObject();
+    rapidjson::Document::AllocatorType &allocator = jsonResponse.GetAllocator();
+
+    // 如果查询到向量，则将jsonData对象的内容合并到jsonResponse中
+    if (!jsonData.IsNull())
+    {
+        for (auto it = jsonData.MemberBegin(); it != jsonData.MemberEnd(); ++it)
+        {
+            jsonResponse.AddMember(it->name, it->value, allocator);
+        }
+    }
+    // 设置返回码为成功
+    jsonResponse.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
+    // 设置JSON响应
+    setJsonResponse(jsonResponse, res);
 }
