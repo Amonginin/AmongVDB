@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400">
+    <!-- 样式定义 -->
+    <style>
+        /* 基础样式 */
+        .node { 
+            fill: #f0f7ff; 
+            stroke: #1890ff; 
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+        .key { 
+            fill: #fff7e6; 
+            stroke: #fa8c16; 
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+        .value { 
+            fill: #f6ffed; 
+            stroke: #52c41a; 
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+        .text { 
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .key-text { 
+            font-weight: bold; 
+        }
+        .arrow { 
+            fill: none; 
+            stroke: #666; 
+            stroke-width: 2; 
+            marker-end: url(#arrowhead);
+            transition: all 0.3s ease;
+        }
+        
+        /* 悬停效果 */
+        .node:hover, .key:hover, .value:hover {
+            filter: brightness(0.95);
+            transform: scale(1.02);
+        }
+        .text:hover {
+            font-weight: bold;
+        }
+        
+        /* 标题样式 */
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            fill: #333;
+        }
+        
+        /* 图例样式 */
+        .legend {
+            font-size: 12px;
+            fill: #666;
+        }
+    </style>
+    
+    <!-- 箭头标记定义 -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+        </marker>
+        
+        <!-- 渐变定义 -->
+        <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f0f7ff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e6f7ff;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <!-- 背景 -->
+    <rect width="100%" height="100%" fill="#ffffff" />
+    
+    <!-- 标题 -->
+    <text x="450" y="40" text-anchor="middle" class="title">过滤条件索引数据结构示例</text>
+    
+    <!-- 主Map容器 -->
+    <rect class="node" x="100" y="70" width="700" height="250" rx="15" ry="15" fill="url(#nodeGradient)" />
+    <text class="text" x="450" y="100" text-anchor="middle" font-size="18" font-weight="bold">map&lt;string, vector&lt;pair&lt;int, int&gt;&gt;&gt;</text>
+    
+    <!-- Map键值对1 -->
+    <rect class="key" x="150" y="130" width="120" height="60" rx="8" ry="8" />
+    <text class="text key-text" x="210" y="155" text-anchor="middle">string</text>
+    <text class="text key-text" x="210" y="175" text-anchor="middle">field=(int_field)</text>
+    
+    
+    <!-- Map值1 (vector) -->
+    <rect class="value" x="320" y="130" width="460" height="60" rx="8" ry="8" />
+    <text class="text" x="550" y="165" text-anchor="middle">vector&lt;pair&lt;int, int&gt;&gt;</text>
+    
+    <!-- 箭头连接Map键和值 -->
+    <line class="arrow" x1="270" y1="160" x2="320" y2="160" />
+    
+    <!-- 向量中的元素 -->
+    <g class="vector-elements">
+        <!-- 元素1 -->
+        <rect class="value" x="340" y="200" width="140" height="60" rx="8" ry="8" />
+        <text class="text" x="410" y="230" text-anchor="middle">pair&lt;int, int&gt;</text>
+        <text class="text" x="410" y="250" text-anchor="middle">id,value=(1, 42)</text>
+        
+        <!-- 元素2 -->
+        <rect class="value" x="510" y="200" width="140" height="60" rx="8" ry="8" />
+        <text class="text" x="580" y="230" text-anchor="middle">pair&lt;int, int&gt;</text>
+        <text class="text" x="580" y="250" text-anchor="middle">id,value=(2, 43)</text>
+        
+        <!-- 元素3 -->
+        <rect class="value" x="680" y="200" width="140" height="60" rx="8" ry="8" />
+        <text class="text" x="750" y="230" text-anchor="middle">pair&lt;int, int&gt;</text>
+        <text class="text" x="750" y="250" text-anchor="middle">id,value=(3, 44)</text>
+    </g>
+    
+    <!-- 向量元素连接线 -->
+    <line class="arrow" x1="410" y1="190" x2="410" y2="200" />
+    <line class="arrow" x1="580" y1="190" x2="580" y2="200" />
+    <line class="arrow" x1="750" y1="190" x2="750" y2="200" />
+    
+    <!-- 图例 -->
+    <g class="legend" transform="translate(100, 350)">
+        <rect class="key" x="0" y="0" width="20" height="15" rx="3" ry="3" />
+        <text x="30" y="12">键 (string)</text>
+        
+        <rect class="value" x="120" y="0" width="20" height="15" rx="3" ry="3" />
+        <text x="150" y="12">值 (vector/pair)</text>
+        
+        <rect class="node" x="240" y="0" width="20" height="15" rx="3" ry="3" />
+        <text x="270" y="12">容器</text>
+    </g>
+    
+    <!-- 说明文本 -->
+    <text x="450" y="380" text-anchor="middle" class="legend">鼠标悬停可查看详细信息</text>
+</svg> 
