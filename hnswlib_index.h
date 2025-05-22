@@ -2,6 +2,7 @@
 
 #include "hnswlib/hnswlib.h"
 #include "index_factory.h"
+#include "roaring/roaring.h"
 #include <vector>
 
 /**
@@ -39,13 +40,42 @@ public:
      * @return 返回一个pair，包含最近邻的标签和对应的距离
      */
     std::pair<std::vector<long>, std::vector<float>> searchVectors(
-        const std::vector<float> &query, int k, int efSearch = 50);
+        const std::vector<float> &query, int k, 
+        const roaring_bitmap_t *bitmap = nullptr, int efSearch = 50);
+
+    /**
+     * @brief 基于 Roaring Bitmap 的 ID 过滤器
+     * 该类继承自 hnswlib::BaseFilterFunctor，用于通过 Roaring Bitmap 判断某个ID是否在集合中。
+     */
+    class RoaringBitmapIDFilter : public hnswlib::BaseFilterFunctor
+    {
+    public:
+        /**
+         * @brief 构造函数
+         * @param bitmap 指向 Roaring Bitmap 的指针
+         */
+        RoaringBitmapIDFilter(const roaring_bitmap_t *bitmap) : bitmap(bitmap) {}
+        /**
+         * @brief 重载()运算符
+         * @param label 标签
+         * @return 如果ID在集合中返回true，否则返回false
+         */
+        bool operator()(hnswlib::labeltype label) {
+            return roaring_bitmap_contains(bitmap, static_cast<uint32_t>(label));
+        }
+    private:
+        /**
+         * @brief 指向 Roaring Bitmap 的指针
+         */
+        const roaring_bitmap_t *bitmap;
+    };
 
 private:
-    ///< 向量数据的维度
-    int dim;                                    
-    ///< 向量空间接口，用于计算向量数据之间的距离的相似度
-    hnswlib::SpaceInterface<float> *space;     
+    // 这两个变量没必要加，直接在构造函数中初始化为局部变量即可
+    // // 向量数据的维度
+    // int dim;                                    
+    // // 向量空间接口，用于计算向量数据之间的距离的相似度
+    // hnswlib::SpaceInterface<float> *space;     
     ///< HNSW索引，用于存储向量数据和执行查询操作
     hnswlib::HierarchicalNSW<float> *index;    
 };

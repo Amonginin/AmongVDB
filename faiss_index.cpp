@@ -2,10 +2,36 @@
 #include "logger.h"
 #include "constants.h"
 #include "faiss/IndexIDMap.h"
+#include "faiss/IndexFlat.h"
 #include <iostream>
 #include <vector>
 
-FaissIndex::FaissIndex(faiss::Index *index) : index(index){}
+/**
+ * @brief 基于 Roaring Bitmap 的 FAISS ID 选择器
+ * 该结构体继承自 faiss::IDSelector，用于通过 Roaring Bitmap 判断某个ID是否在集合中。
+ */
+RoaringBitmapIDSelector::RoaringBitmapIDSelector(const roaring_bitmap_t *bitmap)
+    : bitmap(bitmap) {}
+
+/**
+ * @brief 析构函数
+ */
+RoaringBitmapIDSelector::~RoaringBitmapIDSelector() {}
+
+/**
+ * @brief 判断给定ID是否在 Roaring Bitmap 中
+ */
+bool RoaringBitmapIDSelector::is_member(int64_t id) const
+{
+    return roaring_bitmap_contains(bitmap, static_cast<uint32_t>(id));
+}
+
+/**
+ * @brief 构造函数
+ * @param index 指向 FAISS 索引对象的指针
+ */
+FaissIndex::FaissIndex(faiss::Index *index)
+    : index(index) {}
 
 /**
  * @brief 向FAISS索引中插入单个向量及其关联标签
@@ -22,8 +48,6 @@ void FaissIndex::insertVectors(const std::vector<float> &data, uint64_t label)
 
     // 1表示写入单个向量，data.data()是数据的指针,&id提供向量的ID
     index->add_with_ids(1, data.data(), &id);
-
-    // std::cout << "Inserted vector with ID: " << id << std::endl;
 }
 
 /**
@@ -35,7 +59,7 @@ void FaissIndex::insertVectors(const std::vector<float> &data, uint64_t label)
  *
  * @note 返回的向量ID和距离值按照查询结果顺序排列
  */
-std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const std::vector<float> &query, int k)
+std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const std::vector<float> &query, int k, const roaring_bitmap_t *bitmap)
 {
     // 从索引的维度属性中获取待查询向量的维度
     int dim = index->d;
@@ -44,20 +68,34 @@ std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const
     int num_queries = query.size() / dim;
 
     // 创建一个动态数组来存储所有查询结果向量的ID，大小为待查询向量的数量乘以k
-    std::vector<long> indices(num_queries * k); 
+    std::vector<long> indices(num_queries * k);
 
     // 创建一个存储所有查询结果距离的动态数组，大小也为查询向量的数量乘以k
     std::vector<float> distances(num_queries * k);
 
-    // 执行查询操作，传入查询向量的数量、数据、k值、距离和向量ID结果的指针
-    index->search(num_queries, query.data(), k, distances.data(), indices.data());
+    // 如果传入了 bitmap，则使用 RoaringBitmapIDSelector 初始化 faiss::SearchParams
+
+    faiss::SearchParameters searchParams;
+    RoaringBitmapIDSelector idSelector(bitmap);
+    if (bitmap != nullptr)
+    {
+        searchParams.sel = &idSelector;
+    }
+
+    // 执行查询操作，传入查询向量的数量、数据、k值、距离和向量ID结果的指针、搜索参数(过滤条件)
+    index->search(num_queries, query.data(), k,
+                  distances.data(), indices.data(), &searchParams);
 
     // 打印查询结果
     globalLogger->debug("Retrieved values:");
-    for (size_t i = 0; i < indices.size(); ++i) {
-        if (indices[i] != -1) {
+    for (size_t i = 0; i < indices.size(); ++i)
+    {
+        if (indices[i] != -1)
+        {
             globalLogger->debug("ID: {}, Distance: {}", indices[i], distances[i]);
-        } else {
+        }
+        else
+        {
             globalLogger->debug("No specific value found");
         }
     }
@@ -67,12 +105,12 @@ std::pair<std::vector<long>, std::vector<float>> FaissIndex::searchVectors(const
 
 /**
  * @brief 从FAISS索引中删除指定ID的向量
- * 
+ *
  * @param ids 要删除的向量ID列表
- * 
+ *
  * @note 该函数要求底层的FAISS索引必须是IndexIDMap类型
  * @note 如果底层索引不是IndexIDMap类型，将抛出运行时异常
- * 
+ *
  * @throws std::runtime_error 当底层索引不是IndexIDMap类型时抛出异常
  */
 void FaissIndex::removeVectors(const std::vector<long> &ids)
