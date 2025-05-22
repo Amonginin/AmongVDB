@@ -6,7 +6,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -g -Wall $(INCLUDES)
 
 # 链接选项
-LDFLAGS = -fopenmp -L../faiss/build/faiss -lfaiss -L../rocksdb -lrocksdb -lopenblas -lpthread -L../CRoaring/build -lroaring
+LDFLAGS = -fopenmp -L../faiss/build/faiss -lfaiss -L../rocksdb -lrocksdb -lopenblas -lpthread -L../CRoaring/build/src -lroaring
 
 # Include 目录
 INCLUDES = -I./include -I../faiss -I../rocksdb/include -I../CRoaring/include
