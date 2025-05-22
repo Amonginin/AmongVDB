@@ -2,7 +2,7 @@
 #include "hnswlib_index.h"
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIDMap.h"
-
+#include "filter_index.h"
 // 创建一个名为 globalIndexFactory 的 IndexFactory 类型的全局实例
 // 单例模式+工厂模式，但多线程下需要配合互斥锁防止并发问题
 namespace
@@ -30,8 +30,8 @@ IndexFactory *getGlobalIndexFactory()
  */
 void IndexFactory::init(IndexType type, int dim, int numData, MetricType metric)
 {
-    // 根据传入的度量类型参数，确定使用FAISS的哪种度量方式
-    // MetricType::L2 对应欧氏距离，否则使用内积（余弦相似度）
+    // 根据传入的度量类型参数，确定FAISS索引使用的哪种度量方式
+    // 因为FAISS的度量方式和我们的度量方式不一致，所以需要转换
     faiss::MetricType faiss_metric = (metric == MetricType::L2) ? faiss::METRIC_L2 : faiss::METRIC_INNER_PRODUCT;
 
     // 根据索引类型创建相应的索引实例
@@ -50,6 +50,12 @@ void IndexFactory::init(IndexType type, int dim, int numData, MetricType metric)
         // 1. 创建HNSWLibIndex对象
         // 2. 存入索引映射表，以便后续通过类型访问
         index_map[type] = new HNSWLibIndex(dim, numData, metric,16,200);
+        break;
+    case IndexType::FILTER:
+        // 创建一个过滤索引
+        // 1. 创建HNSWLibIndex对象
+        // 2. 存入索引映射表，以便后续通过类型访问
+        index_map[type] = new FilterIndex();
         break;
     case IndexType::UNKNOWN:
     default:

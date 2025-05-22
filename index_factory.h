@@ -18,6 +18,7 @@ public:
     enum class IndexType {
         FLAT,       ///< 扁平索引
         HNSW,       ///< HNSW索引
+        FILTER,     ///< 过滤索引
         UNKNOWN = -1 ///< 未知索引类型
     };
 
