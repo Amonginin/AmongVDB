@@ -1,7 +1,7 @@
 /**
  * @file vector_database.h
  * @brief 向量数据库头文件
- * 
+ *
  * 该文件定义了向量数据库的接口，提供了向量数据的存储和检索功能。
  * 支持多种索引类型，包括FLAT和HNSW，并集成了标量存储功能。
  */
@@ -17,7 +17,7 @@
 /**
  * @class VectorDatabase
  * @brief 向量数据库类
- * 
+ *
  * 该类实现了向量数据库的核心功能，包括：
  * 1. 向量的插入和更新
  * 2. 向量的查询
@@ -37,7 +37,7 @@ public:
      * @param id 向量ID
      * @param data 包含向量数据的JSON文档
      * @param indexType 索引类型（FLAT或HNSW）
-     * 
+     *
      * 该函数用于插入新的向量数据或更新已存在的向量数据。
      * 如果向量已存在，会先删除旧数据再插入新数据。
      */
@@ -48,11 +48,19 @@ public:
      * @brief 查询数据
      * @param id 要查询的ID
      * @return 返回包含向量数据的JSON文档
-     * 
+     *
      * 该函数用于根据ID查询向量数据，返回JSON格式的向量信息。
      */
     rapidjson::Document query(uint64_t id);
 
+    /**
+     * @brief 搜索数据
+     * @param jsonRequest 包含搜索请求的JSON文档
+     * @return 返回搜索结果
+     */
+    std::pair<std::vector<long>, std::vector<float>> search(
+        const rapidjson::Document &jsonRequest);
+
 private:
-    ScalarStorage scalarStorage;  ///< 标量存储对象，用于存储向量相关的元数据
+    ScalarStorage scalarStorage; ///< 标量存储对象，用于存储向量相关的元数据
 };
