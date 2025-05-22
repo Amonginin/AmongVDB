@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/../faiss",
-                "${workspaceFolder}/../rocksdb/include"
+                "${workspaceFolder}/../rocksdb/include",
+                "${workspaceFolder}/../CRoaring/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
