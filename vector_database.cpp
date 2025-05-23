@@ -16,6 +16,7 @@
 #include "faiss_index.h"
 #include "hnswlib_index.h"
 #include "filter_index.h"
+#include "http_server.h"
 #include <vector>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -25,9 +26,10 @@
  * @brief 构造函数
  * @param dbPath 数据库存储路径
  */
-VectorDatabase::VectorDatabase(const std::string &dbPath)
+VectorDatabase::VectorDatabase(const std::string &dbPath, const std::string &walLogPath)
     : scalarStorage(dbPath)
 {
+    persistence.init(walLogPath);
 }
 
 /**
@@ -256,4 +258,96 @@ std::pair<std::vector<long>, std::vector<float>> VectorDatabase::search(
     }
 
     return results;
+}
+
+/**
+ * @brief 重新加载数据库中的数据
+ * @details 该函数执行以下操作：
+ *          1. 读取 WAL 日志中的每一条记录
+ *          2. 根据操作类型执行相应的操作
+ *          3. 清空 jsonData 对象
+ *          4. 读取下一条 WAL 日志
+ */
+void VectorDatabase::reloadDatabase(){
+    globalLogger->info("Entering VectorDatabase::reloadDatabase()");
+
+    std::string operationType;
+    rapidjson::Document jsonData;
+    
+    // 第一次读取WAL日志
+    persistence.readNextWALLog(&operationType, &jsonData);
+
+    // 循环处理WAL日志，直到operationType为空（没有更多日志）
+    while (!operationType.empty()){
+        // 在处理前检查jsonData是否有效，防止readNextWALLog读取失败但operationType不为空的情况
+        if (!jsonData.IsObject()){
+            globalLogger->debug("jsonData is not an object after reading, stopping reload.");
+            break; 
+        }
+        
+        globalLogger->info("operation type: {}", operationType);
+
+        // 打印读取的一行内容
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        jsonData.Accept(writer);
+        globalLogger->info("Read Line: {}", buffer.GetString());
+
+        // 根据操作类型执行相应的操作
+        if (operationType == "upsert"){
+            uint64_t id = jsonData[REQUEST_ID].GetUint64();
+            IndexFactory::IndexType indexType = getIndexTypeFromRequest(jsonData);
+            // 调用 VectorDatabase::upsert 接口重建数据
+            upsert(id, jsonData, indexType);
+        }
+
+        // 清空 jsonData 对象，为下一次读取做准备
+        rapidjson::Document().Swap(jsonData);
+
+        // 读取下一条 WAL 日志
+        operationType.clear(); // 清空operationType，确保readNextWALLog能正确设置其状态
+        persistence.readNextWALLog(&operationType, &jsonData);
+    }
+    
+    // WAL 重放完毕
+    globalLogger->info("Exiting VectorDatabase::reloadDatabase()");
+}
+
+/**
+ * @brief 写入 WAL 日志
+ * @param operationType 操作类型
+ * @param jsonData 包含向量数据的JSON文档
+ */
+void VectorDatabase::writeWALLog(const std::string &operationType,
+                                 const rapidjson::Document &jsonData){
+    // 自定义版本号
+    std::string verison = "1.0";
+    // 将version传递给 persistence 对象的 writeWALLog 方法
+    persistence.writeWALLog(operationType, jsonData, verison);
+}
+
+/**
+ * @brief 从请求中获取索引类型(出于模块化考虑，将该函数从 http_server.h 中复制过来)
+ * @param jsonRequest JSON请求文档对象
+ * @return IndexFactory::IndexType 返回解析出的索引类型
+ */
+IndexFactory::IndexType VectorDatabase::getIndexTypeFromRequest(const rapidjson::Document &jsonRequest){
+    // 如果请求中包含 indexType 字段
+    if (jsonRequest.HasMember(REQUEST_INDEX_TYPE))
+    {
+        // 获取索引类型字符串
+        std::string indexTypeStr = jsonRequest[REQUEST_INDEX_TYPE].GetString();
+        // 根据字符串值返回对应的索引类型
+        if (indexTypeStr == INDEX_TYPE_FLAT)
+        {
+            return IndexFactory::IndexType::FLAT;
+        }
+        else if (indexTypeStr == INDEX_TYPE_HNSW)
+        {
+            return IndexFactory::IndexType::HNSW;
+        }
+        // TODO: 支持其他索引类型
+    }
+    // 如果请求中不包含 indexType 字段或类型未知，返回 UNKNOWN
+    return IndexFactory::IndexType::UNKNOWN;
 }

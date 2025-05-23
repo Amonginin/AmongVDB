@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include "rapidjson/document.h"
+#include "persistence.h"
 
 /**
  * @class VectorDatabase
@@ -29,8 +30,9 @@ public:
     /**
      * @brief 构造函数
      * @param dbPath 数据库存储路径
+     * @param walLogPath WAL日志存储路径
      */
-    VectorDatabase(const std::string &dbPath);
+    VectorDatabase(const std::string &dbPath, const std::string &walLogPath);
 
     /**
      * @brief 插入或更新向量数据
@@ -61,6 +63,29 @@ public:
     std::pair<std::vector<long>, std::vector<float>> search(
         const rapidjson::Document &jsonRequest);
 
+
+
+    /**
+     * @brief 重新加载数据库中的数据
+     */
+    void reloadDatabase();
+
+    /**
+     * @brief 写入WAL日志
+     * @param operationType 操作类型
+     * @param jsonData 包含向量数据的JSON文档
+     */
+    void writeWALLog(const std::string &operationType,
+                     const rapidjson::Document &jsonData);
+
+    /**
+     * @brief 从请求中获取索引类型(出于模块化考虑，将该函数从 http_server.h 中复制过来)
+     * @param jsonRequest JSON请求文档对象
+     * @return IndexFactory::IndexType 返回解析出的索引类型
+     */
+    IndexFactory::IndexType getIndexTypeFromRequest(const rapidjson::Document &jsonRequest);
+
 private:
     ScalarStorage scalarStorage; ///< 标量存储对象，用于存储向量相关的元数据
+    Persistence persistence; ///< 持久化对象，用于持久化向量数据
 };

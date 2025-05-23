@@ -422,7 +422,11 @@ void HttpServer::upsertHandler(const httplib::Request &req, httplib::Response &r
     globalLogger->debug("Upsert parameters: id = {}", id);
     // 获取请求参数中的索引类型
     IndexFactory::IndexType indexType = getIndexTypeFromRequest(jsonRequest);
+
+    // 调用 VectorDatabase::upsert 接口执行更新操作
     vectorDatabase->upsert(id, jsonRequest, indexType);
+    // 调用 VectorDatabase::writeWALLog 接口写入 WAL 日志
+    vectorDatabase->writeWALLog("upsert", jsonRequest);
 
     rapidjson::Document jsonResponse;
     jsonResponse.SetObject();
