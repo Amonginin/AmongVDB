@@ -24,7 +24,6 @@ int main(int argc, char* argv[]) {
     initGlobalLogger();
     // 设置日志级别为debug，用于开发调试
     setLogLevel(spdlog::level::debug);
-
     globalLogger->info("Global logger initialized");
 
     // 设置向量维度
@@ -50,7 +49,11 @@ int main(int argc, char* argv[]) {
 
     // 初始化VectorDatabase对象
     std::string dbPath = "ScalarStorage"; // 数据库路径，本项目的ScalarStorage目录下
-    VectorDatabase vectorDatabase(dbPath);
+    std::string walLogPath = "WALLogStorage"; // WAL日志路径，本项目的WALLog目录下
+    VectorDatabase vectorDatabase(dbPath, walLogPath);
+
+    // 重新加载数据库中的数据
+    vectorDatabase.reloadDatabase();
     globalLogger->info("VectorDatabase initialized");
 
     // 创建HTTP服务器实例，监听本地9729端口
