@@ -38,7 +38,7 @@ echo "开始启动流程"
 echo "======================"
 
 # 解决启动编译好的vdb_server时无法加载librocksdb.so的问题
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(dirname "$0")/../rocksdb"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/../rocksdb
 echo "已设置 LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 
 # 启动vdb_server
