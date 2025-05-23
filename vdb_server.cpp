@@ -44,6 +44,8 @@ int main(int argc, char* argv[]) {
     globalIndexFactory->init(IndexFactory::IndexType::FLAT, dim);
     // 初始化HNSW类型的索引
     globalIndexFactory->init(IndexFactory::IndexType::HNSW, dim, numData);
+    // 初始化FILTER类型的索引
+    globalIndexFactory->init(IndexFactory::IndexType::FILTER);
     globalLogger->info("Global index factory initialized");
 
     // 初始化VectorDatabase对象

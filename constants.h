@@ -31,7 +31,7 @@
 // 索引类型
 #define INDEX_TYPE_FLAT "FLAT"
 #define INDEX_TYPE_HNSW "HNSW"
-#define INDEX_TYPE_FILTER "FILTER"
+#define INDEX_TYPE_FILTER "filter"
 
 // TODO: 过滤器类型
 #define FILTER_TYPE_INT "INT"
