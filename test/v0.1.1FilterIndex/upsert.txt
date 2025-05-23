@@ -1,0 +1,5 @@
+# 测试请求
+curl -X POST -H "Content-Type: application/json" -d '{"id": 6, "vectors": [0.9], "int_field": 47, "indexType": "FLAT"}' http://localhost:9729/upsert
+
+# 期望返回
+{"retcode":0}

@@ -1,0 +1,11 @@
+# 测试请求
+curl -X POST -H "Content-Type: application/json" -d '{"vectors":[0.9], "k":5, "indexType": "FLAT", "filter":{"fieldName": "int_field", "value":47, "op": "="}}' http://localhost:9729/search
+
+# 期望返回
+{"vectors":[6], "distances": [0.0], "retcode":0}
+
+# 测试请求
+curl -X POST -H "Content-Type: application/json" -d '{"vectors":[0.9], "k":5, "indexType": "FLAT", "filter":{"fieldName": "int_field", "value":47, "op": "!="}}' http://localhost:9729/search
+
+# 期望返回
+{"retcode":0}
