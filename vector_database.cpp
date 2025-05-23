@@ -274,9 +274,17 @@ void VectorDatabase::reloadDatabase(){
     std::string operationType;
     rapidjson::Document jsonData;
     
-    // 通过指针的方式调用 persistence 对象的 readNextWALLog 方法
+    // 第一次读取WAL日志
     persistence.readNextWALLog(&operationType, &jsonData);
+
+    // 循环处理WAL日志，直到operationType为空（没有更多日志）
     while (!operationType.empty()){
+        // 在处理前检查jsonData是否有效，防止readNextWALLog读取失败但operationType不为空的情况
+        if (!jsonData.IsObject()){
+            globalLogger->debug("jsonData is not an object after reading, stopping reload.");
+            break; 
+        }
+        
         globalLogger->info("operation type: {}", operationType);
 
         // 打印读取的一行内容
@@ -293,13 +301,16 @@ void VectorDatabase::reloadDatabase(){
             upsert(id, jsonData, indexType);
         }
 
-        // 清空 jsonData 对象
+        // 清空 jsonData 对象，为下一次读取做准备
         rapidjson::Document().Swap(jsonData);
 
         // 读取下一条 WAL 日志
+        operationType.clear(); // 清空operationType，确保readNextWALLog能正确设置其状态
         persistence.readNextWALLog(&operationType, &jsonData);
     }
     
+    // WAL 重放完毕
+    globalLogger->info("Exiting VectorDatabase::reloadDatabase()");
 }
 
 /**
