@@ -7,6 +7,10 @@
 #include "http_server.h"
 #include "index_factory.h"
 #include "logger.h"
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h> // For checking errno
+#include <string.h> // For strerror
 
 /**
  * @brief 主函数
@@ -49,7 +53,17 @@ int main(int argc, char* argv[]) {
 
     // 初始化VectorDatabase对象
     std::string dbPath = "ScalarStorage"; // 数据库路径，本项目的ScalarStorage目录下
-    std::string walLogPath = "WALLogStorage"; // WAL日志路径，本项目的WALLog目录下
+    std::string walLogPath = "WALLogStorage/WALLog"; // WAL日志路径，本项目的WALLogStorage目录下
+
+    // 确保WAL日志目录存在
+    const char* logDir = "WALLogStorage";
+    if (mkdir(logDir, 0755) == -1) {
+        if (errno != EEXIST) {
+            globalLogger->error("Failed to create WAL log directory {}: {}", logDir, strerror(errno));
+            return 1; // Exit if directory creation fails for reasons other than existence
+        }
+    }
+
     VectorDatabase vectorDatabase(dbPath, walLogPath);
 
     // 重新加载数据库中的数据
