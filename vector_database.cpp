@@ -327,6 +327,16 @@ void VectorDatabase::writeWALLog(const std::string &operationType,
 }
 
 /**
+ * @brief 执行数据库快照
+ *
+ * 调用持久化模块的takeSnapshot方法，传入scalarStorage以便保存快照。
+ */
+void VectorDatabase::takeSnapshot(){
+    // 调用持久化模块执行快照
+    persistence.takeSnapshot(scalarStorage);
+}
+
+/**
  * @brief 从请求中获取索引类型(出于模块化考虑，将该函数从 http_server.h 中复制过来)
  * @param jsonRequest JSON请求文档对象
  * @return IndexFactory::IndexType 返回解析出的索引类型

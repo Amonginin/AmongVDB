@@ -26,6 +26,8 @@ HttpServer::HttpServer(const std::string &host, int port, VectorDatabase *vector
     // 当请求路径为 "/query" 时，调用 queryHandler 函数处理请求
     server.Post("/query", [&](const httplib::Request &req, httplib::Response &res)
                 { queryHandler(req, res); });
+    server.Post("/admin/snapshot", [&](const httplib::Request &req, httplib::Response &res)
+                { snapshotHandler(req, res); });
 }
 
 void HttpServer::start()
@@ -492,5 +494,20 @@ void HttpServer::queryHandler(const httplib::Request &req, httplib::Response &re
     // 设置返回码为成功
     jsonResponse.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
     // 设置JSON响应
+    setJsonResponse(jsonResponse, res);
+}
+
+void HttpServer::snapshotHandler(const httplib::Request &req, httplib::Response &res)
+{
+    // 打印接收到了快照请求
+    globalLogger->debug("Received snapshot request");
+
+    vectorDatabase->takeSnapshot();
+
+    // 将结果转换为JSON格式
+    rapidjson::Document jsonResponse;
+    jsonResponse.SetObject();
+    rapidjson::Document::AllocatorType &allocator = jsonResponse.GetAllocator();
+    jsonResponse.AddMember(RESPONSE_RETCODE, RESPONSE_RETCODE_SUCCESS, allocator);
     setJsonResponse(jsonResponse, res);
 }
