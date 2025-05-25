@@ -1,0 +1,182 @@
+# 快照持久化测试 (v0.2) - 增强版
+
+# 前提条件：
+# 1. 确保 AmongVDB 服务器正在运行，并配置了有效的 dbPath 和 walLogPath。
+# 2. 服务器启动时应自动加载现有快照并重放 WAL 日志。
+# 3. 确保 snapshots 目录存在：mkdir -p snapshots
+
+# ========== 第一阶段：多索引类型数据插入 ==========
+
+# 1. 插入 FLAT 索引数据 (ID 10)
+# 使用 upsert 端点插入 ID 为 10 的向量和标量字段。
+# 此操作也将写入 WAL 日志。
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10, "vectors": [0.1, 0.2, 0.3], "name": "vector_A", "version": 1, "category": 100, "indexType": "FLAT"}' http://localhost:9729/upsert
+
+# 2. 插入 HNSW 索引数据 (ID 20)
+# 测试不同索引类型的快照功能
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 20, "vectors": [0.4, 0.5, 0.6], "name": "vector_B", "version": 2, "category": 200, "indexType": "HNSW"}' http://localhost:9729/upsert
+
+# 3. 插入更多 FLAT 索引数据 (ID 11)
+# 测试同一索引类型的多条数据
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 11, "vectors": [0.7, 0.8, 0.9], "name": "vector_C", "version": 1, "category": 150, "indexType": "FLAT"}' http://localhost:9729/upsert
+
+# 4. 插入更多 HNSW 索引数据 (ID 21)
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 21, "vectors": [1.0, 1.1, 1.2], "name": "vector_D", "version": 2, "category": 250, "indexType": "HNSW"}' http://localhost:9729/upsert
+
+# ========== 第二阶段：验证插入的数据 ==========
+
+# 5. 验证 FLAT 索引数据是否存在 (ID 10)
+# 预期结果：{"id":10,"vectors":[0.1,0.2,0.3],"name":"vector_A","version":1,"category":100,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10}' http://localhost:9729/query
+
+# 6. 验证 HNSW 索引数据是否存在 (ID 20)
+# 预期结果：{"id":20,"vectors":[0.4,0.5,0.6],"name":"vector_B","version":2,"category":200,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 20}' http://localhost:9729/query
+
+# 7. 验证其他数据 (ID 11, 21)
+# 预期结果：{"id":11,"vectors":[0.7,0.8,0.9],"name":"vector_C","version":1,"category":150,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 11}' http://localhost:9729/query
+
+# 预期结果：{"id":21,"vectors":[1.0,1.1,1.2],"name":"vector_D","version":2,"category":250,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 21}' http://localhost:9729/query
+
+# ========== 第三阶段：执行快照 ==========
+
+# 8. 执行快照 (修正后的有效格式)
+# 此请求触发 VectorDatabase::takeSnapshot 方法，该方法会调用 Persistence::takeSnapshot
+# 来保存当前索引状态和 lastSnapshotID。
+# 注意：使用正确的请求格式，包含 Content-Type 头和空的 JSON 请求体
+# 预期结果：HTTP 200 OK，响应体包含成功信息
+curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:9729/admin/snapshot
+
+# 9. 验证快照文件是否创建
+# 手动检查命令（在终端中执行）：
+# ls -la snapshots/
+# 应该看到类似以下文件：
+# - 0.index (FLAT 索引文件)
+# - 1.index (HNSW 索引文件)
+# - 2.index (FILTER 索引文件，如果有的话)
+
+# ========== 第四阶段：服务器重启测试 ==========
+
+# --- 手动步骤：停止 AmongVDB 服务器进程 ---
+# 在此步骤，手动停止正在运行的 AmongVDB 服务器。
+# 步骤 1-4 中插入的数据和步骤 8 中执行的快照现在应该已持久化。
+# 停止命令示例：pkill -f vdb_server 或 Ctrl+C
+
+# --- 手动步骤：重新启动 AmongVDB 服务器进程 ---
+# 手动再次启动 AmongVDB 服务器。
+# 启动命令：./vdb_server
+# 启动时，VectorDatabase 构造函数会：
+# 1. 调用 persistence.loadSnapshot(scalarStorage) 加载快照
+# 2. 调用 reloadDatabase() 重放快照之后的 WAL 日志
+
+# ========== 第五阶段：快照恢复验证 ==========
+
+# 10. 服务器重启后验证所有数据是否存在
+# 验证 FLAT 索引数据 (ID 10, 11)
+# 预期结果：{"id":10,"vectors":[0.1,0.2,0.3],"name":"vector_A","version":1,"category":100,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10}' http://localhost:9729/query
+
+# 预期结果：{"id":11,"vectors":[0.7,0.8,0.9],"name":"vector_C","version":1,"category":150,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 11}' http://localhost:9729/query
+
+# 验证 HNSW 索引数据 (ID 20, 21)
+# 预期结果：{"id":20,"vectors":[0.4,0.5,0.6],"name":"vector_B","version":2,"category":200,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 20}' http://localhost:9729/query
+
+# 预期结果：{"id":21,"vectors":[1.0,1.1,1.2],"name":"vector_D","version":2,"category":250,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 21}' http://localhost:9729/query
+
+# 11. 测试搜索功能是否正常
+# 验证 FLAT 索引搜索
+# 预期结果：{"vectors":[10,11],"distances":[0.0,某个距离值],"retcode":0} (ID顺序可能不同)
+curl -X POST -H "Content-Type: application/json" -d '{"vectors": [0.1, 0.2, 0.3], "k": 2, "indexType": "FLAT"}' http://localhost:9729/search
+
+# 验证 HNSW 索引搜索
+# 预期结果：{"vectors":[20,21],"distances":[0.0,某个距离值],"retcode":0} (ID顺序可能不同)
+curl -X POST -H "Content-Type: application/json" -d '{"vectors": [0.4, 0.5, 0.6], "k": 2, "indexType": "HNSW"}' http://localhost:9729/search
+
+# ========== 第六阶段：快照后新数据测试 ==========
+
+# 12. 快照后插入新数据 (ID 30, 31)
+# 在执行快照后插入新数据。此操作将记录在 WAL 日志中。
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 30, "vectors": [1.3, 1.4, 1.5], "name": "vector_E", "version": 3, "category": 300, "indexType": "FLAT"}' http://localhost:9729/upsert
+
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 31, "vectors": [1.6, 1.7, 1.8], "name": "vector_F", "version": 3, "category": 350, "indexType": "HNSW"}' http://localhost:9729/upsert
+
+# 13. 验证新数据是否存在
+# 预期结果：{"id":30,"vectors":[1.3,1.4,1.5],"name":"vector_E","version":3,"category":300,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 30}' http://localhost:9729/query
+
+# 预期结果：{"id":31,"vectors":[1.6,1.7,1.8],"name":"vector_F","version":3,"category":350,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 31}' http://localhost:9729/query
+
+# ========== 第七阶段：第二次重启测试 ==========
+
+# --- 手动步骤：再次停止 AmongVDB 服务器进程 ---
+# 手动再次停止服务器。ID 30, 31 的数据此时应该只存在于 WAL 日志中。
+
+# --- 手动步骤：再次重新启动 AmongVDB 服务器进程 ---
+# 手动再次启动服务器。
+# 系统加载快照（包含 ID 10, 11, 20, 21）。
+# 然后，reloadDatabase 重放快照 ID *之后* 的 WAL 日志（包含 ID 30, 31）。
+
+# 14. 第二次重启后验证所有数据都存在
+# 验证快照中的数据 (ID 10, 11, 20, 21)
+# 预期结果：{"id":10,"vectors":[0.1,0.2,0.3],"name":"vector_A","version":1,"category":100,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10}' http://localhost:9729/query
+
+# 预期结果：{"id":11,"vectors":[0.7,0.8,0.9],"name":"vector_C","version":1,"category":150,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 11}' http://localhost:9729/query
+
+# 预期结果：{"id":20,"vectors":[0.4,0.5,0.6],"name":"vector_B","version":2,"category":200,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 20}' http://localhost:9729/query
+
+# 预期结果：{"id":21,"vectors":[1.0,1.1,1.2],"name":"vector_D","version":2,"category":250,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 21}' http://localhost:9729/query
+
+# 验证 WAL 重放的数据 (ID 30, 31)
+# 预期结果：{"id":30,"vectors":[1.3,1.4,1.5],"name":"vector_E","version":3,"category":300,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 30}' http://localhost:9729/query
+
+# 预期结果：{"id":31,"vectors":[1.6,1.7,1.8],"name":"vector_F","version":3,"category":350,"indexType":"HNSW","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 31}' http://localhost:9729/query
+
+# ========== 第八阶段：高级测试场景 ==========
+
+# 15. 测试数据更新场景
+# 更新已存在的数据，验证快照和 WAL 的一致性
+# 预期结果：{"retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10, "vectors": [0.11, 0.22, 0.33], "name": "vector_A_updated", "version": 2, "category": 101, "indexType": "FLAT"}' http://localhost:9729/upsert
+
+# 16. 验证更新后的数据
+# 预期结果：{"id":10,"vectors":[0.11,0.22,0.33],"name":"vector_A_updated","version":2,"category":101,"indexType":"FLAT","retcode":0}
+curl -X POST -H "Content-Type: application/json" -d '{"id": 10}' http://localhost:9729/query
+
+# 17. 执行第二次快照
+# 预期结果：HTTP 200 OK，响应体包含成功信息
+curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost:9729/admin/snapshot
+
+# ========== 测试总结 ==========
+# 此测试验证了以下功能：
+# 1. 多种索引类型（FLAT、HNSW）的快照保存和恢复
+# 2. 快照请求的正确格式（POST + Content-Type + 空JSON）
+# 3. 服务器重启后的数据恢复机制
+# 4. WAL 日志重放功能
+# 5. 快照和 WAL 的协同工作
+# 6. 数据更新的持久化
+# 7. 搜索功能在快照恢复后的正常工作
+
+# 预期的成功标准：
+# - 所有 curl 请求都返回 HTTP 200 状态码
+# - 查询请求返回正确的数据内容
+# - 搜索请求返回相关的向量ID和距离
+# - 服务器重启后所有数据都能正确恢复
+# - 快照文件在 snapshots/ 目录中正确创建
