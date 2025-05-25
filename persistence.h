@@ -11,6 +11,7 @@
 #include <fstream>
 #include <cstdint> // 包含 <cstdint> 以使用 uint64_t 类型
 #include "rapidjson/document.h"
+#include "scalar_storage.h"
 
 /**
  * @class Persistence
@@ -25,7 +26,7 @@
  * 其中：
  * - logID: 日志唯一标识符（递增）
  * - version: 数据版本号
- * - operationType: 操作类型（如upsert、delete、query）
+ * - operationType: 操作类型（如upsert、search）
  * - jsonData: 操作相关的JSON数据
  */
 class Persistence
@@ -95,7 +96,34 @@ public:
     void readNextWALLog(std::string *operationType,
                         rapidjson::Document *jsonData);
 
+    /**
+     * @brief 创建快照
+     * @param scalarStorage rocksdb对象
+     * @details 将当前的数据快照存储到rocksdb中
+     */
+    void takeSnapshot(ScalarStorage &scalarStorage);
+
+    /**
+     * @brief 加载快照
+     * @param scalarStorage rocksdb对象
+     * @details 从rocksdb中加载数据快照
+     */
+    void loadSnapshot(ScalarStorage &scalarStorage);
+
+    /**
+     * @brief 保存最后一条快照ID
+     * @details 将快照最后一条日志ID保存到rocksdb中
+     */
+    void saveLastSnapshotID();
+
+    /**
+     * @brief 加载最后一条快照ID
+     * @details 从rocksdb中加载快照最后一条日志ID
+     */
+    void loadLastSnapshotID();
+
 private:
     uint64_t currentID;        ///< 当前日志ID计数器，用于生成唯一的日志标识符
+    uint64_t lastSnapshotID;   ///< Snapshot中最后一条日志ID，用于标明WAL日志的恢复起点
     std::fstream walLogFile;   ///< WAL日志文件流对象，支持读写操作
 };

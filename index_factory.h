@@ -9,6 +9,7 @@
 
 #include <map>
 #include "faiss_index.h"
+#include "scalar_storage.h"
 
 class IndexFactory
 {
@@ -51,10 +52,27 @@ public:
      */
     void *getIndex(IndexType type) const;
 
+    /**
+     * @brief 保存所有创建的索引到指定文件夹
+     * @param folderPath 索引文件保存的文件夹路径
+     * @param scalarStorage 用于保存Scalar索引的存储对象
+     *
+     * 遍历所有已创建的索引，根据其类型调用相应的saveIndex方法进行保存。
+     * 不同类型的索引会保存为不同的文件。
+     */
+    void saveIndex(const std::string& folderPath, ScalarStorage &scalarStorage);
+
+    /**
+     * @brief 从指定文件夹加载索引
+     * @param folderPath 索引文件所在的文件夹路径
+     * @param scalarStorage 用于加载Scalar索引的存储对象
+     */
+    void loadIndex(const std::string& folderPath, ScalarStorage &scalarStorage);
+
 private:
     ///< 存储系统中已经初始化的向量索引
     ///< 使用void*类型来兼容不同类型的索引对象
-    std::map<IndexType, void *> index_map;
+    std::map<IndexType, void *> indexMap;
 };
 
 /**
