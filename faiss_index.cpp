@@ -3,8 +3,10 @@
 #include "constants.h"
 #include "faiss/IndexIDMap.h"
 #include "faiss/IndexFlat.h"
+#include "faiss/index_io.h"
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 /**
  * @brief 基于 Roaring Bitmap 的 FAISS ID 选择器
@@ -23,7 +25,9 @@ RoaringBitmapIDSelector::~RoaringBitmapIDSelector() {}
  */
 bool RoaringBitmapIDSelector::is_member(int64_t id) const
 {
-    return roaring_bitmap_contains(bitmap, static_cast<uint32_t>(id));
+    bool result = roaring_bitmap_contains(bitmap, static_cast<uint32_t>(id));
+    globalLogger->debug("RoaringBitmapIDSelector::is_member: ID: {}, is_member: {}", id, result);
+    return result;
 }
 
 /**
@@ -130,5 +134,46 @@ void FaissIndex::removeVectors(const std::vector<long> &ids)
         globalLogger->error("Faiss removeVectors failed: Underlying index is not an IndexIDMap");
         // 抛出运行时异常
         throw std::runtime_error("Underlying Faiss index is not an IndexIDMap");
+    }
+}
+
+/**
+ * @brief 保存索引到文件
+ * @param filePath 保存索引文件的路径
+ *
+ * 使用faiss::write_index将当前FAISS索引保存到指定的filePath文件。
+ */
+void FaissIndex::saveIndex(const std::string &filePath)
+{
+    faiss::write_index(index, filePath.c_str());
+}
+
+/**
+ * @brief 从文件加载索引
+ * @param filePath 索引文件的路径
+ *
+ * 从指定的filePath文件加载FAISS索引。加载前会检查文件是否存在，
+ * 如果当前已存在索引，会先释放旧索引的内存。如果文件不存在，会打印警告信息并跳过加载。
+ */
+void FaissIndex::loadIndex(const std::string &filePath)
+{
+    // 创建文件流并检查文件是否存在
+    std::ifstream file(filePath);
+    if (file.good())
+    {
+        file.close(); // 关闭文件流
+        // 如果当前索引指针非空，释放旧索引的内存
+        if (index != nullptr)
+        {
+            delete index;
+        }
+        // 从文件读取并加载索引
+        index = faiss::read_index(filePath.c_str());
+    }
+    else
+    {
+        // 文件未找到，打印警告
+        globalLogger->warn("FLAT index file not found: {}. Skipping load FLAT index.",
+                           filePath);
     }
 }

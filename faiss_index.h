@@ -71,6 +71,18 @@ public:
      */
     void removeVectors(const std::vector<long> &ids);
 
+    /**
+     * @brief 保存索引到文件
+     * @param filePath 保存路径
+     */
+    void saveIndex(const std::string &filePath);
+
+    /**
+     * @brief 从文件加载索引
+     * @param filePath 加载路径
+     */
+    void loadIndex(const std::string &filePath);
+
 private:
     /**
      * @brief 指向FAISS索引对象的指针
