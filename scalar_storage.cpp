@@ -92,3 +92,43 @@ rapidjson::Document ScalarStorage::getScalar(uint64_t id)
 
     return data;
 }
+
+/**
+ * @brief 存储键值对
+ * @param key 键
+ * @param value 值
+ *
+ * 使用RocksDB存储给定的键值对。
+ */
+void ScalarStorage::put(const std::string &key, const std::string &value)
+{
+    // 调用RocksDB的Put方法存储数据
+    rocksdb::Status status = db->Put(rocksdb::WriteOptions(), key, value);
+    // 检查RocksDB操作是否成功
+    if (!status.ok())
+    {
+        // 记录错误日志
+        globalLogger->error("Failed to put key-value pair: {}", status.ToString());
+    }
+}
+
+/**
+ * @brief 根据键获取值
+ * @param key 键
+ * @return 返回对应的字符串值，如果键不存在或失败则返回空字符串
+ *
+ * 使用RocksDB根据键检索存储的值。
+ */
+std::string ScalarStorage::get(const std::string &key)
+{
+    std::string value; // 用于存储获取到的值
+    // 调用RocksDB的Get方法获取数据
+    rocksdb::Status status = db->Get(rocksdb::ReadOptions(), key, &value);
+    // 检查RocksDB操作是否成功
+    if (!status.ok())
+    {
+        // 记录错误日志
+        globalLogger->error("Failed to get value for key {}: {}", key, status.ToString());
+    }
+    return value; // 返回获取到的值 (失败时返回空字符串)
+}
