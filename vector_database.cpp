@@ -271,6 +271,8 @@ std::pair<std::vector<long>, std::vector<float>> VectorDatabase::search(
 void VectorDatabase::reloadDatabase(){
     globalLogger->info("Entering VectorDatabase::reloadDatabase()");
 
+    persistence.loadSnapshot(scalarStorage);
+
     std::string operationType;
     rapidjson::Document jsonData;
     

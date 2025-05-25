@@ -3,6 +3,8 @@
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIDMap.h"
 #include "filter_index.h"
+#include "logger.h"
+#include <string.h>
 // 创建一个名为 globalIndexFactory 的 IndexFactory 类型的全局实例
 // 单例模式+工厂模式，但多线程下需要配合互斥锁防止并发问题
 namespace
@@ -99,6 +101,15 @@ void *IndexFactory::getIndex(IndexType type) const
  */
 void IndexFactory::saveIndex(const std::string &folderPath, ScalarStorage &scalarStorage)
 {
+    // 确保快照目录存在
+    if (mkdir(folderPath.c_str(), 0755) == -1) {
+        if (errno != EEXIST) {
+            globalLogger->error("Failed to create snapshot directory {}: {}", folderPath, strerror(errno));
+            return;
+        }
+    }
+    globalLogger->debug("Snapshot directory {} ensured", folderPath);
+
     // 遍历所有已创建的索引
     for (const auto &indexEntry : indexMap)
     {
@@ -109,6 +120,8 @@ void IndexFactory::saveIndex(const std::string &folderPath, ScalarStorage &scala
         std::string fileName = folderPath + "/" +
                                std::to_string(static_cast<int>(type)) +
                                ".index";
+
+        globalLogger->debug("Saving index type {} to file {}", static_cast<int>(type), fileName);
 
         // 根据索引类型调用相应的 saveIndex 方法
         switch (type)
@@ -131,6 +144,7 @@ void IndexFactory::saveIndex(const std::string &folderPath, ScalarStorage &scala
             break;
         }
     }
+    globalLogger->info("Completed saving all indices to {}", folderPath);
 }
 
 /**

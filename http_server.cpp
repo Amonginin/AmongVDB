@@ -497,6 +497,13 @@ void HttpServer::queryHandler(const httplib::Request &req, httplib::Response &re
     setJsonResponse(jsonResponse, res);
 }
 
+/**
+ * @brief 处理快照请求
+ * @param req HTTP请求对象
+ * @param res HTTP响应对象
+ * 
+ * 该函数处理快照请求，调用VectorDatabase的takeSnapshot方法执行快照操作。
+ */
 void HttpServer::snapshotHandler(const httplib::Request &req, httplib::Response &res)
 {
     // 打印接收到了快照请求
