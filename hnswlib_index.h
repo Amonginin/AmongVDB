@@ -17,12 +17,12 @@ public:
     /**
      * @brief 构造函数
      * @param dim 向量维度
-     * @param numData 索引能容纳的最大向量数量
+     * @param maxElements 索引能容纳的最大向量数量
      * @param metric 距离度量类型
      * @param M 索引节点的最大近邻数，默认为16
      * @param efConstruction 构建最大近邻时的最大候选邻居数，默认为200
      */
-    HNSWLibIndex(int dim, int numData, IndexFactory::MetricType metric,
+    HNSWLibIndex(int dim, size_t maxElements, IndexFactory::MetricType metric,
                  int M = 16, int efConstruction = 200);
 
     /**
@@ -42,6 +42,18 @@ public:
     std::pair<std::vector<long>, std::vector<float>> searchVectors(
         const std::vector<float> &query, int k, 
         const roaring_bitmap_t *bitmap = nullptr, int efSearch = 50);
+
+    /**
+     * @brief 保存索引到文件
+     * @param filePath 文件路径
+     */
+    void saveIndex(const std::string &filePath);
+
+    /**
+     * @brief 从文件加载索引
+     * @param filePath 文件路径
+     */
+    void loadIndex(const std::string &filePath);
 
     /**
      * @brief 基于 Roaring Bitmap 的 ID 过滤器
@@ -70,12 +82,13 @@ public:
         const roaring_bitmap_t *bitmap;
     };
 
-private:
-    // 这两个变量没必要加，直接在构造函数中初始化为局部变量即可
-    // // 向量数据的维度
-    // int dim;                                    
-    // // 向量空间接口，用于计算向量数据之间的距离的相似度
-    // hnswlib::SpaceInterface<float> *space;     
+private:                                  
+    ///< 向量空间接口，用于计算向量数据之间的距离的相似度
+    hnswlib::SpaceInterface<float> *space;     
     ///< HNSW索引，用于存储向量数据和执行查询操作
-    hnswlib::HierarchicalNSW<float> *index;    
+    hnswlib::HierarchicalNSW<float> *index;   
+
+    ///< 索引能容纳的最大向量数量
+    size_t maxElements;
+
 };

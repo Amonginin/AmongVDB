@@ -1,10 +1,13 @@
 #include "hnswlib_index.h"
+#include "logger.h"
 #include <vector>
+#include <fstream>
+#include <iostream>
 
 /**
  * @brief 构造函数
  * @param dim 向量维度
- * @param numData 索引能容纳的最大向量数量
+ * @param maxElements 索引能容纳的最大向量数量
  * @param metric 距离度量类型
  * @param M 索引节点的最大近邻数，默认为16
  * @param efConstruction 构建最大近邻时的最大候选邻居数，默认为200
@@ -12,8 +15,8 @@
  * 初始化HNSW索引，创建向量空间和索引结构。
  * 目前仅支持L2距离度量和内积距离度量
  */
-HNSWLibIndex::HNSWLibIndex(int dim, int numData, IndexFactory::MetricType metric,
-                           int M, int efConstruction)
+HNSWLibIndex::HNSWLibIndex(int dim, size_t maxElements, IndexFactory::MetricType metric,
+                           int M, int efConstruction) : maxElements(maxElements)
 {
     hnswlib::SpaceInterface<float> *space;
 
@@ -31,7 +34,7 @@ HNSWLibIndex::HNSWLibIndex(int dim, int numData, IndexFactory::MetricType metric
         throw std::runtime_error("Unsupported metric type");
     }
     // 创建HNSW索引结构
-    index = new hnswlib::HierarchicalNSW<float>(space, numData, M, efConstruction);
+    index = new hnswlib::HierarchicalNSW<float>(space, maxElements, M, efConstruction);
 }
 
 /**
@@ -87,4 +90,39 @@ std::pair<std::vector<long>, std::vector<float>> HNSWLibIndex::searchVectors(
     }    
 
     return {indices, distances};
+}
+
+/**
+ * @brief 保存索引到文件
+ * @param filePath 保存索引文件的路径
+ *
+ * 将当前的HNSWLib索引保存到指定的文件路径。
+ */
+void HNSWLibIndex::saveIndex(const std::string &filePath)
+{
+    // 调用底层HNSWlib库的saveIndex方法保存索引
+    index->saveIndex(filePath);
+}
+
+/**
+ * @brief 从文件加载索引
+ * @param filePath 索引文件的路径
+ *
+ * 从指定的文件路径加载HNSWLib索引。加载前会检查文件是否存在，
+ * 如果文件不存在，会打印警告信息并跳过加载。
+ */
+void HNSWLibIndex::loadIndex(const std::string &filePath)
+{
+    // 创建文件流并检查文件是否存在
+    std::ifstream file(filePath);
+    if (file.good())
+    {
+        file.close(); // 关闭文件流
+        // 从文件加载索引，需要提供文件路径、空间接口和最大元素数
+        index->loadIndex(filePath, space, maxElements);
+    }else{
+        // 文件未找到，打印警告
+        globalLogger->warn("HNSW index file not found: {}. Skipping load HNSW index.",
+                           filePath);
+    }
 }

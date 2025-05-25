@@ -271,6 +271,8 @@ std::pair<std::vector<long>, std::vector<float>> VectorDatabase::search(
 void VectorDatabase::reloadDatabase(){
     globalLogger->info("Entering VectorDatabase::reloadDatabase()");
 
+    persistence.loadSnapshot(scalarStorage);
+
     std::string operationType;
     rapidjson::Document jsonData;
     
@@ -324,6 +326,16 @@ void VectorDatabase::writeWALLog(const std::string &operationType,
     std::string verison = "1.0";
     // 将version传递给 persistence 对象的 writeWALLog 方法
     persistence.writeWALLog(operationType, jsonData, verison);
+}
+
+/**
+ * @brief 执行数据库快照
+ *
+ * 调用持久化模块的takeSnapshot方法，传入scalarStorage以便保存快照。
+ */
+void VectorDatabase::takeSnapshot(){
+    // 调用持久化模块执行快照
+    persistence.takeSnapshot(scalarStorage);
 }
 
 /**

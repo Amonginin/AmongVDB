@@ -104,6 +104,13 @@ private:
     void queryHandler(const httplib::Request &req, httplib::Response &res);
 
     /**
+     * @brief 处理快照请求
+     * @param req HTTP请求对象
+     * @param res HTTP响应对象
+     */
+    void snapshotHandler(const httplib::Request &req, httplib::Response &res);
+
+    /**
      * @brief 设置JSON格式的响应
      * @param json_response JSON响应文档
      * @param res HTTP响应对象
