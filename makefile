@@ -5,11 +5,21 @@ CXX = g++
 # 将INCLUDES添加到CXXFLAGS
 CXXFLAGS = -std=c++17 -g -Wall $(INCLUDES)
 
-# 链接选项
-LDFLAGS = -fopenmp -L../faiss/build/faiss -lfaiss -L../rocksdb -lrocksdb -lopenblas -lpthread -L../CRoaring/build/src -lroaring
+# 链接选项（添加NuRaft和SSL库）
+LDFLAGS = -fopenmp \
+          -L../faiss/build/faiss -lfaiss \
+          -L../rocksdb -lrocksdb \
+          -L../CRoaring/build/src -lroaring \
+          -L../NuRaft/build -lnuraft \
+          -lssl -lcrypto \
+          -lopenblas -lpthread
 
-# Include 目录
-INCLUDES = -I./include -I../faiss -I../rocksdb/include -I../CRoaring/include
+# Include 目录（添加NuRaft头文件路径）
+INCLUDES = -I./include \
+           -I../faiss \
+           -I../rocksdb/include \
+           -I../CRoaring/include \
+           -I../NuRaft/include
 
 # 目标文件
 TARGET = build/vdb_server

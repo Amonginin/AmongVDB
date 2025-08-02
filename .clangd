@@ -1,0 +1,15 @@
+# Cursor头文件配置
+# Cursor 的 LSP 支持机制
+# 主要方式：Cursor 默认使用 Clangd 作为 LSP 服务器
+# 配置优先级：
+# compile_commands.json（最优先）
+# .clangd 配置文件
+# c_cpp_properties.json（作为后备）
+CompileFlags:
+  Add:
+    - -I./include
+    - -I../faiss
+    - -I../rocksdb/include
+    - -I../CRoaring/include
+  Remove:
+    - -W*
